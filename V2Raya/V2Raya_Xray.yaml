@@ -1,0 +1,49 @@
+---
+- name: Setup V2Raya and Xray Core
+  hosts: "{{ target }}"
+  become: true
+  
+  tasks:
+    - name: Installing GO Repo
+      ansible.builtin.apt_repository:
+        repo: ppa:longsleep/golang-backports
+        state: present
+    
+    - name: Install GO
+      ansible.builtin.apt:
+        name: golang-go
+        state: present
+        update_cache: true
+
+    - name: Ensure /etc/apt/keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Key
+      ansible.builtin.get_url:
+        url: https://apt.v2raya.org/key/public-key.asc
+        dest: /etc/apt/keyrings/v2raya.asc
+        mode: '0644'
+
+    - name: Add V2RayA repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/v2raya.asc] https://apt.v2raya.org/ v2raya main"
+        filename: v2raya.list
+        state: present
+
+    - name: Install V2Raya and XRAY
+      ansible.builtin.apt:
+        pkg:
+          - v2raya
+          - xray
+        state: present
+        update_cache: true
+    
+    - name: Enable V2Raya daemon
+      ansible.builtin.systemd_service:
+        daemon_reload: yes
+        name: v2raya.service
+        state: started
+        enabled: true
