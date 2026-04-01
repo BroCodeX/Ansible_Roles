@@ -1,0 +1,130 @@
+---
+- name: secure | Check CA exists
+  stat:
+    path: "{{ elasticsearch_keystore_path }}/elastic-stack-ca.p12"
+  register: CA_file
+
+- name: secure | Check node keystore exists
+  stat:
+    path: "{{ elasticsearch_keystore_path }}/elastic-certificates.p12"
+  register: keystore_file
+
+- name: secure | Check http cert exists
+  stat:
+    path: "{{ elasticsearch_keystore_path }}/elastic-certificate.pem"
+  register: http_cert
+
+- name: secure | Generate CA
+  shell: "{{ elasticsearch_home }}/bin/elasticsearch-certutil ca --pass '' --days {{ elasticsearch_certs_expiration_days }} --out {{ elasticsearch_keystore_path }}/elastic-stack-ca.p12"
+  no_log: True
+  when:
+    - elasticsearch_inventory_hosts[0] == inventory_hostname
+    - CA_file.stat.exists == False
+    - keystore_file.stat.exists == False
+    - elasticsearch_xpack_transport_security_enabled
+
+- name: secure | Generate node keystore
+  shell: "{{ elasticsearch_home }}/bin/elasticsearch-certutil cert --ca /etc/elasticsearch/certs/elastic-stack-ca.p12 --ca-pass '' --days {{ elasticsearch_certs_expiration_days }} --pass '{{ elasticsearch_keystore_password }}' --out {{ elasticsearch_keystore_path }}/elastic-certificates.p12"
+  no_log: True
+  when:
+    - elasticsearch_inventory_hosts[0] == inventory_hostname
+    - keystore_file.stat.exists == False
+    - elasticsearch_xpack_transport_security_enabled
+
+- name: secure | Generate http cert
+  shell: "openssl pkcs12 -nodes -passin pass:'{{ elasticsearch_keystore_password }}' -in {{ elasticsearch_keystore_path }}/elastic-certificates.p12 -out {{ elasticsearch_keystore_path }}/elastic-certificate.pem"
+  no_log: True
+  when:
+    - elasticsearch_inventory_hosts[0] == inventory_hostname
+    - http_cert.stat.exists == False
+    - elasticsearch_xpack_http_security_enabled
+
+- name: secure | Change transport certs ownership
+  ansible.builtin.file:
+    path: "{{ item }}"
+    group: "{{ elasticsearch_group }}"
+    mode: "660"
+  with_items:
+    - "{{ elasticsearch_keystore_path }}/elastic-stack-ca.p12"
+    - "{{ elasticsearch_keystore_path }}/elastic-certificates.p12"
+  when:
+    - elasticsearch_inventory_hosts[0] == inventory_hostname
+    - elasticsearch_xpack_transport_security_enabled
+
+- name: secure | Change http cert ownership
+  ansible.builtin.file:
+    path: "{{ elasticsearch_keystore_path }}/elastic-certificate.pem"
+    group: "{{ elasticsearch_group }}"
+    mode: "660"
+  when:
+    - elasticsearch_inventory_hosts[0] == inventory_hostname
+    - elasticsearch_xpack_http_security_enabled
+
+- name: secure | Sync elastic certificates
+  block:
+    - name: secure | Generate an OpenSSH keypair on {{ inventory_hostname }}
+      openssh_keypair:
+        path: /tmp/id_rsa_elastic
+        comment: temp.elastic@{{ inventory_hostname }}
+      when: elasticsearch_inventory_hosts[0] == inventory_hostname
+
+    - name: secure | Get ssh pubkey from {{ inventory_hostname }}
+      slurp:
+        src: /tmp/id_rsa_elastic.pub
+      when: elasticsearch_inventory_hosts[0] == inventory_hostname
+      register: id_rsa_pub
+
+    - name: secure | Add SSH authorized key
+      authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ hostvars[elasticsearch_inventory_hosts[0]]['id_rsa_pub']['content'] | b64decode }}"
+        state: present
+      when: elasticsearch_inventory_hosts[0] != inventory_hostname
+
+    - name: secure | Copy elastic certificates
+      synchronize:
+        src: "{{ elasticsearch_keystore_path }}/"
+        dest: "{{ elasticsearch_keystore_path }}"
+        rsync_opts:
+          - "--include=elastic-*"
+          - "--exclude=*"
+        private_key: /tmp/id_rsa_elastic
+        mode: push
+      delegate_to: "{{ hostvars[elasticsearch_inventory_hosts[0]]['ansible_eth0']['ipv4']['address'] }}"
+      when: elasticsearch_inventory_hosts[0] != inventory_hostname
+
+    - name: secure | Clean OpenSSH keypair on {{ inventory_hostname }}
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /tmp/id_rsa_elastic
+        - /tmp/id_rsa_elastic.pub
+      when: elasticsearch_inventory_hosts[0] == inventory_hostname
+
+    - name: secure | Clean SSH authorized key
+      authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ hostvars[elasticsearch_inventory_hosts[0]]['id_rsa_pub']['content'] | b64decode }}"
+        state: absent
+      when: elasticsearch_inventory_hosts[0] != inventory_hostname
+  when: elasticsearch_xpack_transport_security_enabled or elasticsearch_xpack_http_security_enabled
+
+- name: secure | Set keystore password
+  shell: echo "{{ elasticsearch_keystore_password }}" | {{ elasticsearch_home }}/bin/elasticsearch-keystore add -x -f 'xpack.security.{{ item }}.ssl.keystore.secure_password'
+  no_log: True
+  with_items:
+    - http
+    - transport
+  when: elasticsearch_xpack_transport_security_enabled or elasticsearch_xpack_http_security_enabled
+
+- name: secure | Set truststore password
+  shell: echo "{{ elasticsearch_keystore_password }}" | {{ elasticsearch_home }}/bin/elasticsearch-keystore add -x -f 'xpack.security.{{ item }}.ssl.truststore.secure_password'
+  no_log: True
+  with_items:
+    - http
+    - transport
+  when: elasticsearch_xpack_transport_security_enabled  or elasticsearch_xpack_http_security_enabled
+
+- name: secure | Set elastic bootstrap password
+  shell: echo "{{ elasticsearch_bootstrap_password }}" | {{ elasticsearch_home }}/bin/elasticsearch-keystore add -x -f 'bootstrap.password'

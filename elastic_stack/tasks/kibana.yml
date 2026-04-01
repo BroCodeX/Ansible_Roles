@@ -1,0 +1,29 @@
+- name: kibana | Install Kibana
+  apt:
+    name: "kibana={{ kibana_version }}*"
+    state: present
+  when: not ansible_check_mode
+
+- name: kibana | Template Kibana config
+  template:
+    src: kibana.yml.j2
+    dest: /etc/kibana/kibana.yml
+  notify:
+    - restart kibana
+
+- name: kibana | Template Kibana nodejs options
+  template:
+    src: kibana.node.options.j2
+    dest: /etc/kibana/node.options
+  notify:
+    - restart kibana
+
+- name: kibana | Set cap_net_bind_service for nodejs
+  capabilities:
+    path: /usr/share/kibana/bin/../node/bin/node
+    capability: cap_net_bind_service+eip
+    state: present
+  when: kibana_port <= 1024
+
+- name: kibana | Restart kibana
+  meta: flush_handlers

@@ -1,0 +1,31 @@
+---
+- name: exporter | Download elasticsearch_exporter
+  unarchive:
+    src: "https://github.com/justwatchcom/elasticsearch_exporter/releases/download/\
+      v{{ elasticsearch_exporter_version }}/elasticsearch_exporter-{{ elasticsearch_exporter_version }}.linux-amd64.tar.gz"
+    dest: /usr/sbin/
+    remote_src: true
+    extra_opts:
+      - --strip-components
+      - '1'
+      - "elasticsearch_exporter-{{ elasticsearch_exporter_version }}.linux-amd64/elasticsearch_exporter"
+  notify:
+    - restart elasticsearch_exporter
+
+- name: exporter | Template elasticsearch_exporter systemd unit
+  template:
+    src: exporter.service.j2
+    dest: /etc/systemd/system/elasticsearch_exporter.service
+  notify:
+    - systemd daemon-reload
+    - restart elasticsearch_exporter
+
+- name: exporter | Template elasticsearch_exporter config
+  template:
+    src: exporter.conf.j2
+    dest: /etc/default/elasticsearch_exporter
+  notify:
+    - restart elasticsearch_exporter
+
+- name: exporter | Restart elasticsearch_exporter
+  meta: flush_handlers

@@ -1,0 +1,13 @@
+[Unit]
+Description=Elasticsearch Exporter
+
+[Service]
+User=elasticsearch
+{% if ansible_os_family == 'Debian' -%}
+EnvironmentFile=/etc/default/elasticsearch_exporter
+{%- endif %}
+
+ExecStart=/usr/sbin/elasticsearch_exporter $OPTIONS
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,212 @@
+---
+# roles/vector/defaults/main.yml
+vector_version: "0.46.0"
+vector_package: "vector_{{ vector_version }}-1_amd64.deb"
+vector_download_url: "https://packages.timber.io/vector/{{ vector_version }}/{{ vector_package }}"
+
+vector_config_dir: /etc/vector
+vector_config_file: vector.yaml
+vector_config_file_template: "{{ vector_config_file }}.j2"
+vector_api_enabled: true
+vector_api_host: 127.0.0.1
+vector_api_port: 8686
+vector_data_dir: "/var/lib/vector"
+vector_user: "vector"
+vector_group: "vector"
+vecror_systemd_file: /etc/systemd/system/vector.service
+vecror_systemd_file_template: vector.service.j2
+
+vector_add_to_groups:
+  - group: docker
+  - group: postgres
+    service: postgresql
+
+# Sources
+vector_sources_default:
+  journald_logs:
+    enabled: true
+    config:
+      type: journald
+      include_units:
+        - vector
+  postgresql_logs:
+    enabled: "{{ true if ('postgresql' in ansible_facts['services'].keys()) else false }}"
+    config:
+      type: file
+      include:
+        - /var/log/postgresql/*.json
+      ignore_older_secs: 86400
+  nginx_logs:
+    enabled: "{{ true if ('nginx' in ansible_facts['services'].keys()) else false }}"
+    config:
+      type: file
+      include: [
+        "/var/log/nginx/*access.log",
+        "/var/log/nginx/*error.log"
+      ]
+      ignore_older_secs: 86400 # 1 day
+  docker_logs:
+    enabled: "{{ true if ('docker' in ansible_facts['services'].keys()) else false }}"
+    config:
+      type: docker_logs
+  nessusd_logs:
+    enabled: "{{ true if ('nessusd.service' in ansible_facts['services'].keys()) else false }}"
+    config:
+      type: file
+      include:
+        - /opt/nessus/var/nessus/logs/www_server.log
+        - /opt/nessus/var/nessus/logs/nessuscli.log
+        - /opt/nessus/var/nessus/logs/backend.log
+      exclude:
+        - /opt/nessus/var/nessus/logs/.*
+      ignore_older_secs: 86400
+vector_sources: {}
+  # # Example:
+  # nginx_logs:
+  #   enabled: enable # enable nginx logs collection if service not installed
+  #   config:
+  #     include: [
+  #       "/var/www/myapp/logs/*.log" # define new logs paths
+  #     ]
+vector_sources_merged: "{{ vector_sources_default |
+    ansible.builtin.combine(vector_sources, recursive=true) }}"
+
+# Transforms
+vector_transforms_default:
+  journald_logs_transform:
+    enabled: "{{ vector_sources_merged.journald_logs.enabled }}"
+    config:
+      type: remap
+      inputs:
+        - journald_logs
+      source: |
+        .service_name = replace(string!(._SYSTEMD_UNIT), r'.service', "")
+
+  postgresql_logs_transform:
+    enabled: "{{ vector_sources_merged.postgresql_logs.enabled }}"
+    config:
+      type: remap
+      inputs:
+      - postgresql_logs
+      source: |
+          .service_name = "postgresql"
+          parsed = parse_json!(.message)
+          pg_time = parse_timestamp!(parsed.timestamp, format: "%Y-%m-%d %H:%M:%S%.3f UTC")
+          .timestamp = format_timestamp!(pg_time, format: "%+")
+          .timestamp_local = parsed.timestamp
+          del(parsed.timestamp)
+          . = merge!(., parsed)
+  nginx_logs_transform:
+    enabled: "{{ vector_sources_merged.nginx_logs.enabled }}"
+    config:
+      type: remap
+      inputs:
+        - nginx_logs
+      source: |
+        .service_name = "nginx"
+        .file_path = to_string(.file) ?? ""
+        if contains(.file_path, "error") {
+            .log_type = "error"
+            parsed = parse_nginx_log!(.message, "error")
+            parsed.nginx_host = parsed.host
+            del(parsed.host)
+            parsed.nginx_message = parsed.message
+            del(parsed.message)
+            . = merge!(., parsed)
+
+        } else if contains(.file_path, "access") {
+            .log_type = "access"
+            parsed = parse_json!(.message)
+            .timestamp = parse_timestamp!(parsed.time_local, format: "%d/%b/%Y:%H:%M:%S %z")
+            . = merge!(., parsed)
+            del(.time_local)
+        }
+        del(.file_path)
+  docker_logs_transform:
+    enabled: "{{ vector_sources_merged.docker_logs.enabled }}"
+    config:
+      type: remap
+      inputs:
+        - docker_logs
+      source: |
+        .service_name = "docker"
+
+  nessusd_logs_transform:
+    enabled: "{{ vector_sources_merged.nessusd_logs.enabled }}"
+    config:
+      type: remap
+      inputs:
+      - nessusd_logs
+      source: |
+        .service_name = "nessusd"
+        .file_path = to_string(.file) ?? ""
+
+        if contains(.file_path, "www_server.log") {
+          # Parse Apache-style logs (www_server.log)
+          parsed = parse_apache_log!(.message, format: "combined")
+          original_host = .host
+          original_message = .message
+          . = merge(., parsed)
+          .host = original_host
+          .message = original_message
+          .remote_ip = parsed.host
+        } else if match!(.message, r'^\[(?P<timestamp>[^\]]+)\] \[(?P<level>[^\]]+)\] \[(?P<component>[^\]]+)\]') {
+          # transform for backend.log
+          parsed = parse_regex!(.message, r'^\[(?P<log_timestamp>[^\]]+)\] \[(?P<level>[^\]]+)\] \[(?P<component>[^\]]+)\] (?P<log_message>.*)$')
+          log_time = parse_timestamp!(parsed.log_timestamp, format: "%d/%b/%Y:%H:%M:%S %z")
+          .timestamp = format_timestamp!(log_time, format: "%+")
+          .level = parsed.level
+          .component = parsed.component
+          .log_message = parsed.log_message
+        } else {
+          # fallback for simpler nessuscli.log
+          parsed = parse_regex!(.message, r'^\[(?P<log_timestamp>[^\]]+)\] (?P<log_message>.*)$')
+          log_time = parse_timestamp!(parsed.log_timestamp, format: "%d/%b/%Y:%H:%M:%S %z")
+          .timestamp = format_timestamp!(log_time, format: "%+")
+          .level = "info"
+          .component = "nessuscli"
+          .log_message = parsed.log_message
+        }
+
+        del(.file_path)
+
+vector_transforms: {}
+vector_transforms_merged: "{{ vector_transforms_default |
+    ansible.builtin.combine(vector_transforms, recursive=true) }}"
+
+# Sinks
+vector_stream_fields: "host,container_name,service_name"
+vector_sinks_default:
+  blackhole:
+    enabled: false   # disable output by default
+    config:
+      type: blackhole
+      inputs:
+          - journald_logs_transform
+  vmlogs:
+    enabled: true
+    config:
+      type: http
+      inputs: >-
+        {%- set results = [] -%}
+        {%- for transform_name, transform in vector_transforms_merged.items() if transform.enabled -%}
+        {%-   set name = transform_name  -%}
+        {%-   set _ = results.append(name) -%}
+        {%- endfor -%}
+        {{ results }}
+      uri: "http://{{ vmlogs_host }}:{{ vmlogs_port }}/insert/jsonline?_stream_fields={{ vector_stream_fields }}&_msg_field=message&_time_field=timestamp"
+      compression: gzip
+      encoding:
+        codec: json
+      framing:
+        method: newline_delimited
+      healthcheck:
+        enabled: false
+vector_sinks: {}
+# # Example
+#   blackhole:
+#     enabled: true
+#   vmlogs:
+#     enabled: false
+vector_sinks_merged: "{{ vector_sinks_default |
+    ansible.builtin.combine(vector_sinks, recursive=true) }}"

@@ -1,0 +1,5 @@
+services:
+  epr-proxy:
+    image: docker.elastic.co/package-registry/distribution:{{ epr_distribution }}
+    ports:
+      - "{{ epr_proxy_host }}:{{ epr_proxy_port }}:8080"

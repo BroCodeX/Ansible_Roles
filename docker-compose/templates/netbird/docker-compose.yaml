@@ -1,0 +1,42 @@
+# {{ ansible_managed }}
+name: {{ docker_compose_project_name }}
+
+services:
+  # UI dashboard
+  dashboard:
+    image: {{ netbird_dashboard_image }}
+    container_name: netbird-dashboard
+    restart: unless-stopped
+    networks: [netbird]
+    ports:
+      - "{{ netbird_bind_addr }}:{{ netbird_dashboard_host_port }}:80"
+    env_file:
+      - ./dashboard.env
+    logging: &logging
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+
+  # Combined server (Management + Signal + Relay + STUN)
+  netbird-server:
+    image: {{ netbird_server_image }}
+    container_name: netbird-server
+    restart: unless-stopped
+    networks: [netbird]
+    ports:
+      - "{{ netbird_bind_addr }}:{{ netbird_management_host_port }}:80"
+      - "{{ netbird_stun_port }}:{{ netbird_stun_port }}/udp"
+      - "{{ netbird_bind_addr }}:{{ netbird_metrics_port }}:{{ netbird_metrics_port }}"
+      - "{{ netbird_bind_addr }}:{{ netbird_healthcheck_port }}:{{ netbird_healthcheck_port }}"
+    volumes:
+      - netbird_data:/var/lib/netbird
+      - ./config.yaml:/etc/netbird/config.yaml
+    command: ["--config", "/etc/netbird/config.yaml"]
+    logging: *logging
+
+volumes:
+  netbird_data:
+
+networks:
+  netbird:

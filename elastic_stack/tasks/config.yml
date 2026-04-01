@@ -1,0 +1,39 @@
+---
+- name: config | Create data directory if it does not exist
+  file:
+      path: "{{ item }}"
+      state: directory
+      mode: '0755'
+      owner: "{{ elasticsearch_user }}"
+      group: "{{ elasticsearch_group }}"
+  with_items: "{{ elasticsearch_path_data }}"
+
+- name: config | Template elasticsearch config
+  template:
+    src: "{{ item | basename }}.j2"
+    dest: "{{ item }}"
+    owner: root
+    group: elasticsearch
+    mode: 0660
+  with_items:
+    - /etc/elasticsearch/elasticsearch.yml
+    - /etc/elasticsearch/jvm.options.d/elasticsearch.heap.options
+  register: es_config
+
+- name: config | Ensure Elasticsearch started and enable
+  service:
+    name: elasticsearch
+    state: started
+    enabled: true
+  register: es_service
+  when:
+    - not ansible_check_mode
+
+- name: config | Restart Elasticsearch to apply config changes
+  systemd:
+    name: elasticsearch
+    state: restarted
+  when:
+    - es_config.changed
+    - not es_service.changed
+    - not ansible_check_mode

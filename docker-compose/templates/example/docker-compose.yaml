@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+
+name: {{ docker_compose_project_name }}
+
+services:
+
+    hello-world:
+        image: hello-world:latest
+        container_name: hello-world
+        restart: on-failure:5

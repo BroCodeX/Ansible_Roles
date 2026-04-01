@@ -1,0 +1,104 @@
+- name: post-config | Check connect to elastic
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/_cluster/health
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    method: GET
+    status_code: 200
+
+- name: post-config | Create ILM policies
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/_ilm/policy/{{ item.key }}
+    method: PUT
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    body_format: json
+    status_code: 200
+    body: >
+      {
+        "policy":
+          {
+            "phases":
+              {
+                "hot":
+                  {
+                    "min_age": "0ms",
+                    "actions": { "set_priority": { "priority": 100 } }
+                  },
+                "delete":
+                  {
+                    "min_age": "{{item.value.retention}}",
+                    "actions": { "delete": {} }
+                  }
+              }
+          }
+      }
+  loop_control:
+    label: "{{ item.key }}"
+  with_dict: "{{ elasticsearch_ilm }}"
+
+- name: post-config | Create index templates
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/_template/{{ item.key }}
+    method: PUT
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    body_format: json
+    status_code: 200
+    body: >
+      {
+          "index_patterns" : ["{{ item.key }}-*"],
+          "settings" : {
+              "index.lifecycle.name" : "{{ item.key }}",
+              "number_of_replicas" : "{{ elasticsearch_number_of_replicas }}"
+          }
+      }
+  loop_control:
+    label: "{{ item.key }}"
+  with_dict: "{{ elasticsearch_ilm }}"
+
+- name: post-config | Apply settings to already created indexes
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/{{ item.key }}-*/_settings
+    method: PUT
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    body_format: json
+    status_code: 200
+    body: >
+      {
+        "index.lifecycle.name" : "{{ item.key }}",
+        "number_of_replicas" : "{{ elasticsearch_number_of_replicas }}"
+      }
+  loop_control:
+    label: "{{ item.key }}"
+  ignore_errors: true
+  with_dict: "{{ elasticsearch_ilm }}"
+
+- name: post-config | Create kibana Data view
+  uri:
+    url: http://{{ kibana_host }}:{{kibana_port}}/api/data_views/data_view
+    method: POST
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    body_format: json
+    status_code: 200
+    headers:
+      kbn-xsrf: "true"
+    body: >
+      {
+        "data_view": {
+          "title": "{{ item.key }}-*",
+          "name": "{{ item.key }}"
+        }
+      }
+  loop_control:
+    label: "{{ item.key }}"
+  ignore_errors: true
+  with_dict: "{{ elasticsearch_ilm }}"
+  when: kibana_data_view_create

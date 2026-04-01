@@ -1,0 +1,16 @@
+docker_compose_project_name: example
+docker_compose_project_path: "/opt/{{ docker_compose_project_name }}"
+docker_compose_templates_path: "{{ role_path }}/templates"
+docker_compose_cleanup_unmanaged_enabled: true
+docker_compose_cleanup_unmanaged_exclude_dirs:
+ - "data"
+docker_compose_files: []
+docker_compose_state: present
+docker_compose_pull: "policy"
+docker_compose_remove_orphans: true
+docker_compose_recreate: auto
+docker_compose_scale: {}
+docker_compose_services: []
+docker_compose_wait: false
+docker_compose_wait_timeout: 600
+docker_compose_template_no_log: false

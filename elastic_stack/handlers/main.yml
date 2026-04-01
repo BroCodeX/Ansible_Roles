@@ -1,0 +1,38 @@
+---
+- name: systemd daemon-reload
+  systemd:
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: restart elasticsearch
+  systemd:
+    name: elasticsearch
+    state: restarted
+  when: not ansible_check_mode
+
+- name: restart elasticsearch_exporter
+  systemd:
+    name: elasticsearch_exporter
+    state: restarted
+    enabled: true
+  when: not ansible_check_mode
+
+- name: restart kibana
+  systemd:
+    name: kibana
+    state: restarted
+    enabled: true
+  when: not ansible_check_mode
+
+- name: restart apm-server
+  systemd:
+    name: apm-server
+    state: restarted
+    enabled: true
+  when: not ansible_check_mode
+
+- name: restart docker
+  systemd:
+    name: docker
+    state: restarted
+  when: not ansible_check_mode

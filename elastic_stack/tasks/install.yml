@@ -1,0 +1,39 @@
+---
+- name: install | Install deps
+  apt:
+    name: apt-transport-https
+    state: present
+  when: not ansible_check_mode
+
+- name: install | Add Elasticsearch key
+  apt_key:
+    url: "{{ elasticsearch_repo_key }}"
+    state: present
+
+- name: install | Add Elasticsearch repo
+  apt_repository:
+    repo: "{{ elasticsearch_repo }}"
+    state: present
+
+- name: install | Install Elasticsearch
+  apt:
+    name: "elasticsearch={{ elasticsearch_version }}*"
+    state: present
+  notify: systemd daemon-reload
+  when: not ansible_check_mode
+
+- name: install | Override elasticsearch service config
+  block:
+  - name: install | Create service dir
+    file:
+      path: /etc/systemd/system/elasticsearch.service.d
+      state: directory
+  - name: install | Add elasticsearch service config
+    template:
+      src: elasticsearch.service.override.j2
+      dest: /etc/systemd/system/elasticsearch.service.d/override.conf
+    notify: systemd daemon-reload
+  when: elasticsearch_service_override
+
+- name: install | Forces reload
+  meta: flush_handlers

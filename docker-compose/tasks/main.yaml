@@ -1,0 +1,73 @@
+---
+- name: Create docker compose project directory
+  file:
+    path: "{{ docker_compose_project_path }}"
+    state: directory
+
+- name: Find all project directories
+  ansible.builtin.find:
+    paths: "{{ docker_compose_templates_path }}/{{ docker_compose_project_name }}"
+    recurse: yes
+    file_type: directory
+  delegate_to: 127.0.0.1
+  become: false
+  register: template_dirs
+
+- name: Create project directories
+  ansible.builtin.file:
+    path: "{{ docker_compose_project_path }}/{{ item.path | regex_replace(docker_compose_templates_path +'/'+ docker_compose_project_name+'/', '') }}"
+    state: directory
+    mode: "{{ item.mode | default('0755') }}"
+  loop: "{{ template_dirs.files }}"
+  loop_control:
+    label: "{{ docker_compose_project_path }}/{{ item.path | regex_replace(docker_compose_templates_path +'/'+ docker_compose_project_name+'/', '') }}"
+
+- name: Find all project files
+  ansible.builtin.find:
+    paths: "{{ docker_compose_templates_path }}/{{ docker_compose_project_name }}"
+    recurse: yes
+    file_type: file
+    hidden: true
+  delegate_to: 127.0.0.1
+  become: false
+  register: template_files
+  tags:
+    - cleanup_unmanaged
+
+- name: Template all project files
+  ansible.builtin.template:
+    src: "{{ item.path }}"
+    dest: "{{ docker_compose_project_path }}/{{ item.path | regex_replace(docker_compose_templates_path +'/'+ docker_compose_project_name+'/', '') | regex_replace('\\.j2$', '') }}"
+    mode: "{{ item.mode | default('0644') }}"
+  register: templated_files
+  no_log: "{{ docker_compose_template_no_log }}"
+  loop: "{{ template_files.files }}"
+  loop_control:
+    label: "{{ docker_compose_project_path }}/{{ item.path | regex_replace(docker_compose_templates_path +'/'+ docker_compose_project_name+'/', '') | regex_replace('\\.j2$', '') }}"
+  
+- name: Cleanup unmanaged project files
+  ansible.builtin.import_tasks: cleanup_unmanaged.yaml
+  when: docker_compose_cleanup_unmanaged_enabled
+  tags:
+    - cleanup_unmanaged
+
+- name: docker compose up
+  community.docker.docker_compose_v2:
+    project_src: "{{ docker_compose_project_path }}"
+    files: "{{ docker_compose_files }}"
+    state: "{{ docker_compose_state }}"
+    pull: "{{ docker_compose_pull }}"
+    remove_orphans: "{{ docker_compose_remove_orphans }}"
+    recreate: "{{ docker_compose_recreate }}"
+    scale: "{{ docker_compose_scale }}"
+    services: "{{ docker_compose_services }}"
+    wait: "{{ docker_compose_wait }}"
+    wait_timeout: "{{ docker_compose_wait_timeout }}"
+  register: output
+  when: not ansible_check_mode
+
+- name: Show results
+  ansible.builtin.debug:
+    var: output.stderr_lines
+  failed_when: output.failed
+  when: output is changed

@@ -1,0 +1,62 @@
+---
+- import_tasks: install.yml
+  tags:
+    - elastic_stack
+    - install_elastic
+
+- import_tasks: secure.yml
+  tags:
+    - elastic_stack
+    - secure_elastic
+  when:
+    - elasticsearch_xpack_security_enabled
+    - not ansible_check_mode 
+
+- import_tasks: config.yml
+  tags:
+    - elastic_stack
+    - config_elastic
+
+- import_tasks: users.yml
+  tags:
+    - elastic_stack
+    - users_elastic
+  environment:
+    http_proxy: ""
+    https_proxy: ""
+  when: elasticsearch_setup_native_users
+
+- import_tasks: exporter.yml
+  tags:
+    - elastic_stack
+    - elastic_exporter
+  when: elasticsearch_exporter_install
+
+- import_tasks: kibana.yml
+  tags:
+    - elastic_stack
+    - kibana
+  when: kibana_install
+
+- import_tasks: post-config.yaml
+  tags:
+    - elastic_stack
+    - post_config
+  environment:
+    http_proxy: ""
+    https_proxy: ""
+  when:
+    - elasticsearch_ilm | length > 0 
+    - elasticsearch_inventory_hosts[0] == inventory_hostname
+
+- import_tasks: apm-server.yml
+  tags:
+    - elastic_stack
+    - apm_server
+  when: apm_server_install
+
+- import_tasks: epr-proxy.yml
+  tags:
+    - elastic_stack
+    - epr_proxy
+  when: epr_proxy_enabled

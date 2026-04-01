@@ -1,0 +1,49 @@
+#Ansible managed
+{% if not kibana_nginx_proxy_exist %}
+server.publicBaseUrl: http://{{ kibana_domain_name }}
+server.host: {{ kibana_public_host }}
+{% else %}
+server.host: {{ kibana_host }}
+{% endif %}
+server.port: {{ kibana_port }}
+server.name: {{ inventory_hostname }}
+
+xpack.security.encryptionKey: {{ kibana_encryptionKey }}
+xpack.security.session.idleTimeout: "1h"
+xpack.security.session.lifespan: "7d"
+xpack.security.session.cleanupInterval: "1d"
+
+{% if elasticsearch_xpack_security_enabled %}
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "{{ elasticsearch_native_user_passwords.kibana_system.password }}"
+{% endif %}
+{% if elasticsearch_xpack_http_security_enabled %}
+elasticsearch.ssl.certificateAuthorities: {{ elasticsearch_keystore_path }}/elastic-certificate.pem
+elasticsearch.ssl.verificationMode: certificate
+{% endif %}
+elasticsearch.requestTimeout: {{ kibana_elasticsearch_timeout }}
+
+{% if kibana_es_high_availability %}
+elasticsearch.hosts:
+{% for host in elasticsearch_inventory_hosts %}
+  - http{{ 's' if elasticsearch_xpack_http_security_enabled else '' }}://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:{{ elasticsearch_http_port }}
+{% endfor %}
+{% else %}
+elasticsearch.hosts:
+  - http{{ 's' if elasticsearch_xpack_http_security_enabled else '' }}://{{ kibana_es_host }}:{{ elasticsearch_http_port }}
+{% endif %}
+
+logging:
+  appenders:
+    file:
+      type: file
+      fileName: /var/log/kibana/kibana.log
+      layout:
+        type: pattern
+  root:
+    appenders: [file]
+    level: error
+
+{% if epr_proxy_enabled %}
+xpack.fleet.registryUrl: "{{ epr_proxy_url }}"
+{% endif %}

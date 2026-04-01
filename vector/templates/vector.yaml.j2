@@ -1,0 +1,27 @@
+
+# {{ ansible_managed }}
+
+data_dir: {{ vector_data_dir }}
+api:
+  enabled: {{ vector_api_enabled }}
+{% if vector_api_enabled %}
+  address: {{ vector_api_host }}:{{ vector_api_port }}
+{% endif %}
+
+sources:
+{% for source_name, source in vector_sources_merged.items() if source.enabled %}
+  {{ source_name }}:
+    {{ source.config | to_nice_yaml(sort_keys=false) | indent(4) }}
+{% endfor %}
+
+transforms:
+{% for transform_name, transform in vector_transforms_merged.items() if transform.enabled %}
+  {{ transform_name }}:
+    {{ transform.config | to_nice_yaml(sort_keys=false) | indent(4) }}
+{% endfor %}
+
+sinks:
+{% for sink_name, sink in vector_sinks_merged.items() if sink.enabled == true %}
+  {{ sink_name }}:
+    {{ sink.config | to_nice_yaml(sort_keys=false) | indent(4) }}
+{% endfor %}

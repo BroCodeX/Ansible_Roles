@@ -1,0 +1,18 @@
+- name: apm_server | Install apm-server
+  apt:
+    name: "apm-server={{ apm_server_version }}*"
+    state: present
+  when: not ansible_check_mode
+
+- name: apm_server | Template apm-server config
+  template:
+    src: apm-server.yml.j2
+    dest: /etc/apm-server/apm-server.yml
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  notify:
+    - restart apm-server
+
+- name: apm_server | Restart apm-server
+  meta: flush_handlers

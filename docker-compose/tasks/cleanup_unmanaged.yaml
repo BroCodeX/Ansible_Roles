@@ -1,0 +1,38 @@
+- name: Find project dir files
+  ansible.builtin.find:
+    paths: "{{ docker_compose_project_path }}"
+    recurse: false
+    hidden: true
+  register: project_dir_files
+
+- name: Find managed dirs
+  ansible.builtin.find:
+    paths: "{{ docker_compose_project_path }}"
+    recurse: false
+    file_type: directory
+    excludes: "{{ docker_compose_cleanup_unmanaged_exclude_dirs }}"
+  register: managed_dirs
+
+- name: Find exist project files in managed dirs
+  ansible.builtin.find:
+    paths: "{{ managed_dirs.files | map(attribute='path') | list }}"
+    recurse: true
+    hidden: true
+  register: project_files
+
+- name: Set exist files for project dir
+  ansible.builtin.set_fact:
+    exist_files: "{{ (project_dir_files.files + project_files.files) | map(attribute='path') | list | regex_replace(docker_compose_project_path+'/', '') }}"
+
+- name: Set managed files list
+  ansible.builtin.set_fact:
+    managed_files: "{{ template_files.files | map(attribute='path') | map('regex_replace', docker_compose_templates_path +'/'+ docker_compose_project_name+'/', '') | map('regex_replace', '\\.j2$', '') }}"
+
+- name: Remove unmanaged project files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ exist_files }}"
+  when:
+    - item not in managed_files
+

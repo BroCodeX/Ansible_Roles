@@ -1,0 +1,3 @@
+OPTIONS="--es.uri=http://{{ elasticsearch_exporter_es_host }}:{{ elasticsearch_http_port }} --web.listen-address={{ elasticsearch_network_publish_host }}:{{ elasticsearch_exporter_http_port }} --no-es.all --es.node='{{ elasticsearch_node_name }}' --collector.clustersettings --es.indices --es.indices_settings --es.aliases --es.indices_mappings --es.shards --collector.snapshots --collector.slm --collector.data-stream"
+ES_USERNAME='elastic'
+ES_PASSWORD='{{ elasticsearch_native_user_passwords.elastic.password }}'

@@ -1,0 +1,13 @@
+- name: Install Vector
+  ansible.builtin.import_tasks: install.yml
+  become: true
+  tags:
+    - vector
+    - vector_install
+  
+- name: Configure Vector
+  ansible.builtin.import_tasks: config.yml
+  become: true
+  tags:
+    - vector
+    - vector_config

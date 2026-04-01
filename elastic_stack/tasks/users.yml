@@ -1,0 +1,45 @@
+- name: users | Ensure Elasticsearch started
+  service:
+    name: elasticsearch
+    state: started
+  when:
+    - not ansible_check_mode
+
+- name: users | Check if bootstrap password was changed
+  stat:
+    path: /etc/elasticsearch/elastic_bootstrap_password_changed
+  register: bootstrap_changed_file
+
+- name: users | Set elastic user password
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/_security/user/elastic/_password
+    method: POST
+    body_format: json
+    user: "elastic"
+    password: "{{ elasticsearch_bootstrap_password }}"
+    force_basic_auth: yes
+    body: "{ \"password\":\"{{elasticsearch_native_user_passwords.elastic.password}}\" }"
+  # no_log: true
+  register: response
+  when: bootstrap_changed_file.stat.exists == False
+
+- name: users | Touch status file if elastic password changed
+  ansible.builtin.file:
+    path: /etc/elasticsearch/elastic_bootstrap_password_changed
+    state: touch
+  when:
+    - response.status | default(omit) == 200
+
+- name: users | Set other built-in user's passwords
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/_security/user/{{ item.key }}/_password
+    method: POST
+    body_format: json
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    body: "{ \"password\":\"{{item.value.password}}\" }"
+  no_log: true
+  loop_control:
+    label: "{{ item.key }}"
+  with_dict: "{{ elasticsearch_native_user_passwords }}"

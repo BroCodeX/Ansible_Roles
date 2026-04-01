@@ -1,0 +1,73 @@
+---
+- name: Add users
+  ansible.builtin.user:
+    name: "{{ item.username }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+  loop: "{{ users_users }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when: item.state | default ('present') == 'present'
+  tags:
+    - users_create
+
+- name: Remove users
+  ansible.builtin.user:
+    name: "{{ item.username }}"
+    state: absent
+    remove: "{{ item.remove_homedir | default(false) }}"
+  loop: "{{ users_users }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when: item.state | default ('present') == 'absent'
+  tags:
+    - users_remove
+
+- name: Get users info
+  ansible.builtin.getent:
+    database: passwd
+  tags:
+    - users_create
+
+- name: Add public keys
+  ansible.posix.authorized_key:
+    user: "{{ item.username }}"
+    exclusive: true
+    key: "{{ item.pubkeys | join('\n') }}"
+  loop: "{{ users_users }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when:
+    - item.username in getent_passwd
+    - item.state | default('present') == 'present'
+    - item.pubkeys is defined
+  tags:
+    - users_create
+
+- name: Add users to sudoers
+  community.general.sudoers:
+    name: "{{ item.username | replace('.', '') }}"
+    user: "{{ item.username }}"
+    runas: ALL
+    commands: "{{ item.sudo_commands | default('ALL') }}"
+    validation: required
+  loop: "{{ users_users }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when:
+    - item.state | default('present') == 'present'
+    - item.sudo | default(false) | bool
+  tags:
+    - users_create
+
+- name: Remove users from sudoers
+  community.general.sudoers:
+    name: "{{ item.username | replace('.', '') }}"
+    state: absent
+    validation: required
+  loop: "{{ users_users }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when: item.state | default('present') == 'absent' or not item.sudo | default(false) | bool
+  tags:
+    - users_create
+    - users_remove

@@ -1,0 +1,44 @@
+---
+- name: epr-proxy | Create docker dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /etc/systemd/system/docker.service.d
+    - /opt/elastic-package-registry
+  when: lookup('env', 'HTTP_PROXY')
+
+- name: epr-proxy | Template docker-compose.yml
+  template:
+    src: epr.docker-compose.yml.j2
+    dest: /opt/elastic-package-registry/docker-compose.yml
+
+- name: epr-proxy | Set docker http proxy config
+  template:
+    src: epr.docker.service.proxy.j2
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+  notify:
+    - systemd daemon-reload
+    - restart docker
+  when: lookup('env', 'HTTP_PROXY')
+
+- name: epr-proxy | Restart docker.service
+  meta: flush_handlers
+
+- name: epr-proxy | Pull Elastic Package Registry image
+  shell: docker compose -f /opt/elastic-package-registry/docker-compose.yml pull
+
+- name: epr-proxy | Remove docker http proxy config
+  file:
+    path: /etc/systemd/system/docker.service.d/http-proxy.conf
+    state: absent
+  notify:
+    - systemd daemon-reload
+    - restart docker
+  when: lookup('env', 'HTTP_PROXY')
+
+- name: epr-proxy | Restart docker.service
+  meta: flush_handlers
+
+- name: epr-proxy | Run Elastic Package Registry container
+  shell: docker compose -f /opt/elastic-package-registry/docker-compose.yml up -d

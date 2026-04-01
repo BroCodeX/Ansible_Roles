@@ -1,0 +1,46 @@
+#Ansible managed
+
+server {
+    listen 80;
+    server_name {{ kibana_domain_name }};
+
+    access_log /var/log/nginx/{{kibana_domain_name}}-access.log;
+    error_log /var/log/nginx/{{kibana_domain_name}}-error.log warn;
+
+    location ^~ /.well-known/ {
+            allow all;
+            auth_basic          off;
+            default_type "text/plain";
+            root /var/www/;
+    }
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name {{ kibana_domain_name }};
+
+    access_log /var/log/nginx/{{kibana_domain_name}}-access.log;
+    error_log /var/log/nginx/{{kibana_domain_name}}-error.log warn;
+
+    ssl_certificate /root/.acme.sh/{{kibana_domain_name}}_ecc/fullchain.cer;
+    ssl_certificate_key /root/.acme.sh/{{kibana_domain_name}}_ecc/{{kibana_domain_name}}.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:{{ kibana_port }};
+        proxy_redirect off;
+        proxy_buffering off;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "Keep-Alive";
+        proxy_set_header Proxy-Connection "Keep-Alive";
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 120;
+        proxy_send_timeout 120;
+        proxy_read_timeout 180;
+    }
+}

@@ -1,0 +1,16 @@
+#Ansible managed
+
+server {
+    listen 80;
+    server_name {{ kibana_domain_name }};
+
+    access_log /var/log/nginx/{{kibana_domain_name}}-access.log;
+    error_log /var/log/nginx/{{kibana_domain_name}}-error.log warn;
+
+    location ^~ /.well-known/ {
+            allow all;
+            auth_basic          off;
+            default_type "text/plain";
+            root /var/www/;
+    }
+}

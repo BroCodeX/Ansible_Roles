@@ -1,0 +1,96 @@
+---
+# elasticsearch repo
+elasticsearch_version: 8.6.2
+elasticsearch_major_version: "{{ elasticsearch_version.split('.')[0] }}"
+elasticsearch_repo_key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+elasticsearch_repo: deb https://artifacts.elastic.co/packages/{{ elasticsearch_major_version }}.x/apt stable main
+# elasticsearch node settings
+elasticsearch_heap_size: 512m
+elasticsearch_path_data:
+  - /var/lib/elasticsearch
+elasticsearch_user: elasticsearch
+elasticsearch_group: elasticsearch
+elasticsearch_cluster_name: elasticsearch
+elasticsearch_node_name: "{{ inventory_hostname }}"
+# elasticsearch network settings
+elasticsearch_network_host:
+  - "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+  - 127.0.0.1
+elasticsearch_network_bind_host: "{{ elasticsearch_network_host }}"
+elasticsearch_network_publish_host: "{{ elasticsearch_network_host[0] }}"
+elasticsearch_http_port: 9200
+# elasticsearch service settings
+elasticsearch_service_override: false
+elasticsearch_service_timeout: 600
+# elasticsearch additional settings
+elasticsearch_cluster_publish_timeout: 30s
+elasticsearch_indices_query_bool_max_clause_count: 1024
+# elasticsearch get cluster nodes from inventory
+elasticsearch_inventory_hosts: "{{ groups['some_ansible_group'] }}"
+# elasticsearch xpack settings
+elasticsearch_xpack_ml_enabled: false
+# elasticsearch xpack security settings
+elasticsearch_xpack_security_enabled: true
+elasticsearch_xpack_transport_security_enabled: true
+elasticsearch_xpack_http_security_enabled: false
+elasticsearch_home: /usr/share/elasticsearch
+elasticsearch_keystore_path: /etc/elasticsearch/certs
+elasticsearch_certs_expiration_days: 1825 # default 1095
+elasticsearch_keystore_password: override
+elasticsearch_bootstrap_password: override
+elasticsearch_setup_native_users: true
+elasticsearch_native_user_passwords:
+  elastic:
+    password: override
+  kibana_system:
+    password: override
+  logstash_system:
+    password: override
+  beats_system:
+    password: override
+  apm_system:
+    password: override
+  remote_monitoring_user:
+    password: override
+# ilm
+elasticsearch_number_of_replicas: "{{ elasticsearch_inventory_hosts | length - 1 }}"
+elasticsearch_ilm: {}
+  # override-1:
+  #   retention: 180d
+  # override-2:
+  #   retention: 180d
+
+# exporter
+elasticsearch_exporter_install: true
+elasticsearch_exporter_version: 1.10.0
+elasticsearch_exporter_http_port: 9114
+elasticsearch_exporter_es_host: "{{ elasticsearch_network_host[1] }}"
+
+# kibana
+kibana_install: false
+kibana_version: "{{ elasticsearch_version }}"
+kibana_domain_name: kibana.local
+kibana_host: 127.0.0.1
+kibana_public_host: "{{ elasticsearch_network_publish_host }}"
+kibana_port: 5601
+kibana_es_high_availability: false
+kibana_es_host: "{{ elasticsearch_network_host[1] }}"
+kibana_elasticsearch_timeout: 30000
+kibana_nginx_proxy_exist: false
+kibana_encryptionKey: override # something_at_least_32_characters
+kibana_max_memory: 1024
+kibana_data_view_create: true
+
+# apm-server
+apm_server_install: false
+apm_server_version: "{{ elasticsearch_version }}"
+apm_server_host: "{{ elasticsearch_network_publish_host }}"
+apm_server_es_host: "{{ elasticsearch_network_host[1] }}"
+apm_server_port: 8200
+
+# Elastic Package Registry
+epr_proxy_enabled: false
+epr_proxy_port: 8080
+epr_proxy_host: "{{ hostvars[elasticsearch_inventory_hosts[0]].ansible_host }}"
+epr_proxy_url: "http://{{ epr_proxy_host }}:{{ epr_proxy_port }}"
+epr_distribution: lite-{{ elasticsearch_version }}

@@ -1,0 +1,27 @@
+---
+- name: Ensure prerequisites are installed
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Download Vector package
+  ansible.builtin.get_url:
+    url: "{{ vector_download_url }}"
+    dest: "/tmp/{{ vector_package }}"
+    mode: "0644"
+  when: not ansible_check_mode
+
+- name: Check if Vector package exists
+  ansible.builtin.stat:
+    path: "/tmp/{{ vector_package }}"
+  register: vector_package_stat
+
+- name: Install Vector package
+  ansible.builtin.apt:
+    deb: "/tmp/{{ vector_package }}"
+    state: present
+  when: vector_package_stat.stat.exists
+  notify: Restart vector service

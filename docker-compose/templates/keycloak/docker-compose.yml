@@ -1,0 +1,96 @@
+# {{ ansible_managed }}
+
+name: {{ docker_compose_project_name }}
+
+services:
+
+  keycloak:
+    image: {{ keycloak_image }}
+    container_name: keycloak
+    command: {{ keycloak_command }}
+    restart: unless-stopped
+    environment:
+      KC_DB: {{ keycloak_db_engine }}
+      KC_DB_USERNAME: {{ keycloak_db_username }}
+      KC_DB_PASSWORD: {{ keycloak_db_password }}
+      KC_DB_URL: {{ keycloak_db_url }}
+      KC_BOOTSTRAP_ADMIN_USERNAME: {{ keycloak_bootstrap_admin_username }}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: {{ keycloak_bootstrap_admin_password }}
+      KC_METRICS_ENABLED: {{ keycloak_metrics_enabled }}
+      KC_EVENT_METRICS_USER_ENABLED: {{ keycloak_event_metrics_user_enabled }}
+      KC_EVENT_METRICS_USER_EVENTS: {{ keycloak_event_metrics_user_events }}
+      KC_HEALTH_ENABLED: {{ keycloak_health_enabled }}
+      KC_LOG_LEVEL: {{ keycloak_log_level }}
+      KC_LOG_LEVEL_ORG_KEYCLOAK_EVENTS: {{ keycloak_log_level_org_keycloak_events }}
+      KC_HOSTNAME: {{ keycloak_hostname }}
+      KC_HTTP_MAX_QUEUED_REQUESTS: {{ keycloak_http_max_queued_requests }}
+      KC_HTTP_ENABLED: {{ keycloak_http_enabled }}
+      KC_PROXY_HEADERS: {{ keycloak_proxy_headers }}
+      KC_PROXY_TRUSTED_ADDRESSES: {{ keycloak_proxy_trusted_addresses }}
+    ports:
+      - {{ keycloak_web_host }}:{{ keycloak_web_port }}:8080
+      - {{ keycloak_management_host }}:{{ keycloak_management_port }}:9000
+    logging: &logging
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 800M
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+    depends_on:
+      - postgres
+
+  postgres:
+    container_name: postgres
+    restart: unless-stopped
+    image: {{ keycloak_postgres_image }}
+    environment:
+      POSTGRES_PASSWORD: {{ keycloak_db_password }}
+      POSTGRES_DB: {{ keycloak_db_name }}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/18/docker
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 800M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
+  postgres-exporter:
+    image: {{ keycloak_postgres_exporter_image }}
+    container_name: postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_URI: "postgres:5432/{{ keycloak_db_name }}?sslmode=disable"
+      DATA_SOURCE_USER: {{ keycloak_db_username }}
+      DATA_SOURCE_PASS: {{ keycloak_db_password }}
+    ports:
+      - "{{ ansible_host }}:9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M

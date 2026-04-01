@@ -1,0 +1,32 @@
+---
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Add Vector user to additional groups
+  ansible.builtin.user:
+    name: "{{ vector_user }}"
+    groups: "{{ item.group }}"
+    append: true
+  when: "(item.service | default(item.group)) in ansible_facts['services'].keys()"
+  loop: "{{ vector_add_to_groups }}"
+  loop_control:
+    label: "{{ item.group }}"
+  notify: Restart vector service
+
+- name: Template Vector systemd service
+  ansible.builtin.template:
+    src: "{{ vecror_systemd_file_template }}"
+    dest: "{{ vecror_systemd_file }}"
+    mode: "0644"
+    validate: "systemd-analyze verify %s"
+  notify: Restart vector service
+
+- name: Template Vector configuration
+  ansible.builtin.template:
+    src: "{{ vector_config_file_template }}"
+    dest: "{{ vector_config_dir }}/{{ vector_config_file }}"
+    owner: "{{ vector_user }}"
+    group: "{{ vector_group }}"
+    mode: "0644"
+    validate: "/usr/bin/vector validate %s"
+  notify: Restart vector service

@@ -1,0 +1,56 @@
+#Ansible managed
+
+cluster.name: {{ elasticsearch_cluster_name }}
+node.name: {{ elasticsearch_node_name }}
+path:
+  data:
+{% for item in elasticsearch_path_data %}
+    - {{ item }}
+{% endfor %}
+  logs: /var/log/elasticsearch
+network.host:
+{% for item in elasticsearch_network_host %}
+    - {{ item }}
+{% endfor %}
+network.bind_host:
+{% for item in elasticsearch_network_bind_host %}
+    - {{ item }}
+{% endfor %}
+network.publish_host: {{ elasticsearch_network_publish_host }}
+http.port: {{ elasticsearch_http_port }}
+discovery.seed_hosts: [{% for host in elasticsearch_inventory_hosts %}"{{ hostvars[host]['ansible_default_ipv4']['address'] }}",{% endfor %}]
+cluster.initial_master_nodes:
+{% for host in elasticsearch_inventory_hosts %}
+  - {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+{% endfor %}
+
+cluster.publish.timeout: {{ elasticsearch_cluster_publish_timeout }}
+indices.query.bool.max_clause_count: {{ elasticsearch_indices_query_bool_max_clause_count }}
+xpack.ml.enabled: {{ elasticsearch_xpack_ml_enabled }}
+
+{% if elasticsearch_xpack_security_enabled %}
+xpack.security.enabled: true
+{% if elasticsearch_xpack_transport_security_enabled %}
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate 
+xpack.security.transport.ssl.keystore.path: {{ elasticsearch_keystore_path }}/elastic-certificates.p12
+xpack.security.transport.ssl.truststore.path: {{ elasticsearch_keystore_path }}/elastic-certificates.p12
+{% else %}
+xpack.security.transport.ssl.enabled: false
+{% endif%}
+{% if elasticsearch_xpack_http_security_enabled %}
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.client_authentication: optional
+xpack.security.http.ssl.verification_mode: certificate
+xpack.security.http.ssl.truststore.path: {{ elasticsearch_keystore_path }}/elastic-certificates.p12
+xpack.security.http.ssl.keystore.path: {{ elasticsearch_keystore_path }}/elastic-certificates.p12
+{% else %}
+xpack.security.http.ssl.enabled: false
+{% endif%}
+{% else %}
+xpack.security.enabled: false
+xpack.security.transport.ssl.enabled: false
+xpack.security.http.ssl.enabled: false
+{% endif%}
+
+

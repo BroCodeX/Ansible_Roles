@@ -1,0 +1,12 @@
+#Ansible managed
+apm-server:
+  host: "{{ apm_server_host }}:{{ apm_server_port }}" 
+output.elasticsearch:
+  hosts: ["http{{ 's' if elasticsearch_xpack_http_security_enabled else '' }}://{{ apm_server_es_host }}:{{ elasticsearch_http_port }}"]
+{% if elasticsearch_xpack_security_enabled %}
+  username: "apm_system" 
+  password: "{{ elasticsearch_native_user_passwords.apm_system.password }}"
+{% endif %}
+{% if elasticsearch_xpack_http_security_enabled %}
+ssl.certificate_authorities: {{ elasticsearch_keystore_path }}/elastic-certificate.pem
+{% endif %}

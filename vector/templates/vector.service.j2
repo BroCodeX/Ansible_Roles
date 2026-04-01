@@ -1,0 +1,19 @@
+[Unit]
+Description=Vector - A lightweight, ultra-fast tool for building observability pipelines
+Documentation=https://vector.dev/docs/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ vector_user }}
+Group={{ vector_group }}
+ExecStart=/usr/bin/vector --config {{ vector_config_dir }}/{{ vector_config_file }}
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+Environment=LOG_FORMAT=json
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
