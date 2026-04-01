@@ -1,0 +1,13 @@
+---
+- name: Create mongodb backup user
+  community.mongodb.mongodb_user:
+    database: "admin"
+    login_user: "{{ mongodb_root_username }}"
+    login_password: "{{ mongodb_root_password }}"
+    name: "{{ mongodb_backup_username }}"
+    password: "{{ mongodb_backup_password }}"
+    state: present
+    roles:
+      - db: admin
+        role: backup
+  no_log: true

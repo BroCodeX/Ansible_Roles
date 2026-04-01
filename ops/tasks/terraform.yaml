@@ -1,0 +1,83 @@
+---
+- name: Check if Terraform binary exists.
+  ansible.builtin.stat:
+    path: "{{ terraform_bin_path }}"
+  register: terraform_check
+
+- name: Check Terraform version.
+  ansible.builtin.command: "{{ terraform_bin_path }} version"
+  register: terraform_existing_version
+  changed_when: false
+  failed_when: false
+  when: terraform_check.stat.exists
+
+- name: Set installed Terraform version.
+  ansible.builtin.set_fact:
+    terraform_installed_version: >-
+      {{ (terraform_existing_version.stdout.splitlines()[0].split('v')[1]) | default('') }}
+  when: terraform_check.stat.exists
+
+- name: Debug Terraform version parsing.
+  ansible.builtin.debug:
+    msg:
+      - "raw={{ terraform_existing_version.stdout | default('') }}"
+      - "parsed={{ terraform_installed_version | default('') }}"
+      - "target={{ terraform_version }}"
+  when: terraform_check.stat.exists
+
+- name: Set Terraform install state.
+  ansible.builtin.set_fact:
+    terraform_needs_install: >-
+      {{ not terraform_check.stat.exists
+      or (terraform_installed_version | default('')) != terraform_version }}
+
+- name: Install Terraform binary.
+  block:
+    - name: Download Terraform archive.
+      ansible.builtin.get_url:
+        url: >-
+          {{ terraform_repo_path }}/{{ terraform_version }}/terraform_{{
+          terraform_version }}_{{ terraform_platform }}_{{ terraform_arch }}.zip
+        dest: "/tmp/terraform_{{ terraform_version }}_{{ terraform_platform }}_{{ terraform_arch }}.zip"
+        mode: "0644"
+        force: true
+
+    - name: Create Terraform tmp dir.
+      ansible.builtin.file:
+        path: "/tmp/terraform_{{ terraform_version }}"
+        state: directory
+        mode: "0755"
+
+    - name: Unpack Terraform archive.
+      ansible.builtin.unarchive:
+        src: "/tmp/terraform_{{ terraform_version }}_{{ terraform_platform }}_{{ terraform_arch }}.zip"
+        dest: "/tmp/terraform_{{ terraform_version }}"
+        remote_src: true
+
+    - name: Copy Terraform binary into place.
+      ansible.builtin.copy:
+        src: "/tmp/terraform_{{ terraform_version }}/terraform"
+        dest: "{{ terraform_bin_path }}"
+        mode: "0755"
+        remote_src: true
+      become: true
+  always:
+    - name: Remove Terraform tmp archive.
+      ansible.builtin.file:
+        path: "/tmp/terraform_{{ terraform_version }}_{{ terraform_platform }}_{{ terraform_arch }}.zip"
+        state: absent
+
+    - name: Remove Terraform tmp dir.
+      ansible.builtin.file:
+        path: "/tmp/terraform_{{ terraform_version }}"
+        state: absent
+  when: terraform_needs_install | bool
+
+- name: Get final Terraform version.
+  ansible.builtin.command: "{{ terraform_bin_path }} version"
+  register: terraform_final_version
+  changed_when: false
+
+- name: Display Terraform version.
+  ansible.builtin.debug:
+    msg: "{{ terraform_final_version.stdout_lines | first }}"

@@ -1,0 +1,48 @@
+---
+- name: Set up Utils.
+  ansible.builtin.import_tasks: utilites.yaml
+  tags:
+    - utils
+    - ops
+
+- name: Set up Ansible using Pip.
+  ansible.builtin.import_tasks: ansible.yaml
+  tags:
+    - ansible
+    - ops
+
+- name: Set up Helm.
+  ansible.builtin.import_tasks: helm.yaml
+  tags:
+    - helm
+    - ops
+
+- name: Set up Helmfile.
+  ansible.builtin.import_tasks: helmfile.yaml
+  tags:
+    - helmfile
+    - ops
+
+- name: Set up SOPS.
+  ansible.builtin.import_tasks: sops.yaml
+  tags:
+    - sops
+    - ops
+
+- name: Set up kubectl.
+  ansible.builtin.import_tasks: kubectl.yaml
+  tags:
+    - kubectl
+    - ops
+
+- name: Set up Terraform.
+  ansible.builtin.import_tasks: terraform.yaml
+  tags:
+    - terraform
+    - ops
+
+- name: Set up AWS CLI.
+  ansible.builtin.import_tasks: aws.yaml
+  tags:
+    - aws
+    - ops

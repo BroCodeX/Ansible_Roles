@@ -1,0 +1,34 @@
+#mongo variables
+mongodb_backup_username: "mongodb_backup"
+mongodb_backup_password: "mongodb_backup_password"
+pritunl_db_uri: "mongodb://{{ mongodb_backup_username }}:{{ mongodb_backup_password }}@{{ mongodb_host }}:{{ mongodb_port }}/{{ mongodb_users.pritunl.database }}"
+mongodb_port: 27017
+mongodb_host: 127.0.0.1
+
+
+#cron schedule for backup and check_backup
+cron_jobs:
+  - job: /bin/bash /root/scripts/mongodb_backup.sh
+    minute: 0
+    hour: 3
+    name: mongodb_backup
+  - job: /bin/bash /root/scripts/check_mongodb_backup.sh
+    minute: 0
+    hour: 6
+    name: check_mongodb_backup
+
+#s3 credentinals
+s3_bucket: "backups"
+region: "us-east-2"
+s3_path: "ops-main/mongo"
+
+#alertmanager credentials
+alertmanager_basic_auth_enabled: false
+alertmanager_user: "alertmanager_user"
+alertmanager_password: "alertmanager_password"
+alertmanager_url: https://alertmanager_url/api/v2/alerts
+
+# aws cli
+aws_cli_download_url: https://awscli.amazonaws.com/awscli-exe-linux-{{ ansible_architecture }}.zip
+
+retention_policy: 30

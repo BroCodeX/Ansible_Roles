@@ -1,0 +1,70 @@
+---
+# Common variables for ops role
+bin_path: /usr/local/bin
+
+# Ansible
+# https://docs.ansible.com/projects/ansible/latest/reference_appendices/release_and_maintenance.html#ansible-changelogs
+ansible_pip_package: ansible
+ansible_install_version: "11.5.0"
+ansible_install_pip_extra_args: ""
+ansible_venv_path: /opt/ansible-venv
+ansible_bin_path: "{{ bin_path }}/ansible"
+ansible_managed_binaries:
+  - ansible
+  - ansible-config
+  - ansible-doc
+  - ansible-galaxy
+  - ansible-inventory
+  - ansible-playbook
+  - ansible-pull
+  - ansible-vault
+
+# Helm
+# https://github.com/helm/helm/releases
+helm_version: "v4.1.1"
+helm_platform: linux
+helm_arch: amd64
+helm_repo_path: https://get.helm.sh
+helm_bin_path: "{{ bin_path }}/helm"
+helm_diff_version: "3.15.0"
+helm_secrets_version: "4.7.5"
+
+# Helmfile
+# https://github.com/helmfile/helmfile/releases
+helmfile_version: "1.2.3"
+helmfile_platform: linux
+helmfile_arch: amd64
+helmfile_repo_path: https://github.com/helmfile/helmfile/releases/download
+helmfile_bin_path: "{{ bin_path }}/helmfile"
+
+# SOPS
+# https://github.com/getsops/sops/releases
+sops_version: "v3.12.2"
+sops_platform: linux
+sops_arch: amd64
+sops_repo_path: https://github.com/getsops/sops/releases/download
+sops_bin_path: "{{ bin_path }}/sops"
+
+# Kubectl
+# https://kubernetes.io/releases/
+kubectl_version: "v1.35.3"
+kubectl_platform: linux
+kubectl_arch: amd64
+kubectl_repo_path: https://dl.k8s.io/release
+kubectl_bin_path: "{{ bin_path }}/kubectl"
+
+# Terraform
+# https://github.com/hashicorp/terraform/releases
+terraform_version: "1.14.4"
+terraform_platform: linux
+terraform_arch: amd64
+terraform_repo_path: https://releases.hashicorp.com/terraform
+terraform_bin_path: "{{ bin_path }}/terraform"
+
+# AWS CLI
+# https://raw.githubusercontent.com/aws/aws-cli/v2/CHANGELOG.rst
+aws_cli_version: ""
+aws_cli_arch: x86_64
+aws_cli_repo_path: https://awscli.amazonaws.com
+aws_cli_install_dir: /usr/local/aws-cli
+aws_cli_bin_path: "{{ bin_path }}/aws"

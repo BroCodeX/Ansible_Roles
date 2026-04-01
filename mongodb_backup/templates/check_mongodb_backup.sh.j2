@@ -1,0 +1,71 @@
+#!/bin/bash
+export TZ=Europe/Moscow
+export PATH=$PATH:~/.itsumma/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DT=$(date +"%Y-%m-%d-%H%M%S")
+DIR=/backup/mongodb_backup
+URL={{ alertmanager_url }}
+
+{% if alertmanager_basic_auth_enabled | bool %}
+AUTH="--user '{{ alertmanager_user }}:{{ alertmanager_password }}'"
+{% else %}
+AUTH=""
+{% endif %}
+
+send_alert () {
+  ENDS_AT=$(date --iso-8601=seconds --date='+1 day')
+  curl -XPOST $URL $AUTH -d "[{
+        \"status\": \"firing\", 
+        \"labels\":{
+            \"alertname\":\"$1\",
+            \"severity\":\"warning\",
+            \"instance\":\"{{ inventory_hostname }}\",
+            \"service\":\"mongodb_backup\"
+            },
+            \"annotations\": {
+                \"description\": \"mongodb_backup\"
+            },
+            \"endsAt\":\"${ENDS_AT}\"
+}]"
+}
+
+send_resolve () {
+  ENDS_AT=$(date --iso-8601=seconds)
+  curl -XPOST $URL $AUTH -d "[{
+        \"status\": \"resolved\", 
+        \"labels\":{
+            \"alertname\":\"$1\",
+            \"severity\":\"warning\",
+            \"instance\":\"{{ inventory_hostname }}\",
+            \"service\":\"mongodb_backup\"
+            },
+            \"annotations\": {
+                \"description\": \"mongodb_backup\"
+            },
+            \"endsAt\":\"${ENDS_AT}\"
+}]"
+}
+
+################### Check for at least two local archives #####
+d1=$(date +%s)
+
+for archive in $(ls -1 ${DIR}/*gz | tail -n 1); do
+  d2=$(stat --printf=%Y ${archive})
+  r=$(( (d1 - d2) /86400 ))
+  if (( $r >= 2 )); then
+  send_alert MongoBackupIsMissing
+  else
+  send_resolve MongoBackupIsMissing
+  fi
+done
+###############################################################
+
+################### Check for at least two s3 archives ########
+
+check_date1=$(date -d "1 days ago" +%Y-%m-%d)
+check_date2=$(date -d "2 days ago" +%Y-%m-%d)
+if [ -z "$(aws s3 ls s3://{{ s3_bucket }}/{{ s3_path }}/ | grep "$check_date1")" ] || [ -z "$(aws s3 ls s3://{{ s3_bucket }}/{{ s3_path }}/ | grep "$check_date2")" ]; then
+send_alert MongoBackupS3IsMissing
+else
+send_resolve MongoBackupS3IsMissing
+fi
+###############################################################

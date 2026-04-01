@@ -1,0 +1,44 @@
+---
+# based on https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+
+- name: Check if AWS CLI is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/aws
+  register: aws_cli_installed
+
+- name: AWS | Install aws cli deps
+  ansible.builtin.package:
+    name:
+      - unzip
+    state: present
+  when: not aws_cli_installed.stat.exists
+
+- name: AWS | Unarchive AWS CLI archive
+  ansible.builtin.unarchive:
+    src: "{{ aws_cli_download_url }}"
+    dest: /tmp
+    remote_src: true
+  no_log: true
+  when: not aws_cli_installed.stat.exists
+
+- name: AWS | Install AWS CLI
+  ansible.builtin.command: /tmp/aws/install
+  args:
+    creates: /usr/local/bin/aws
+  when: not aws_cli_installed.stat.exists
+
+- name: "AWS | Set aws bash completions for '{{ ansible_user }}' user"
+  become_user: "{{ ansible_user }}"
+  ansible.builtin.lineinfile:
+    path: "~/.bashrc"
+    line: "complete -C '/usr/local/bin/aws_completer' aws"
+    state: present
+  when: not aws_cli_installed.stat.exists
+
+- name: Verify AWS CLI installation
+  command: "aws --version"
+  register: aws_cli_version
+
+- name: Display AWS CLI version
+  debug:
+    msg: "{{ aws_cli_version.stdout }}"

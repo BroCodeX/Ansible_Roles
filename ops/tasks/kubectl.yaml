@@ -1,0 +1,84 @@
+---
+- name: Check if kubectl binary exists.
+  ansible.builtin.stat:
+    path: "{{ kubectl_bin_path }}"
+  register: kubectl_check
+
+- name: Check kubectl version.
+  ansible.builtin.command: "{{ kubectl_bin_path }} version --client"
+  register: kubectl_existing_version
+  changed_when: false
+  failed_when: false
+  when: kubectl_check.stat.exists
+
+- name: Set kubectl install state.
+  ansible.builtin.set_fact:
+    kubectl_needs_install: >-
+      {{ not kubectl_check.stat.exists
+      or kubectl_version not in (kubectl_existing_version.stdout | default('')) }}
+
+- name: Install kubectl binary.
+  block:
+    - name: Download kubectl binary.
+      ansible.builtin.get_url:
+        url: >-
+          {{ kubectl_repo_path }}/{{ kubectl_version }}/bin/{{ kubectl_platform }}/{{
+          kubectl_arch }}/kubectl
+        dest: "/tmp/kubectl-{{ kubectl_version }}"
+        mode: "0755"
+        force: true
+
+    - name: Copy kubectl binary into place.
+      ansible.builtin.copy:
+        src: "/tmp/kubectl-{{ kubectl_version }}"
+        dest: "{{ kubectl_bin_path }}"
+        mode: "0755"
+        remote_src: true
+      become: true
+  always:
+    - name: Remove kubectl tmp binary.
+      ansible.builtin.file:
+        path: "/tmp/kubectl-{{ kubectl_version }}"
+        state: absent
+  when: kubectl_needs_install | bool
+
+- name: Get final kubectl version.
+  ansible.builtin.command: "{{ kubectl_bin_path }} version --client"
+  register: kubectl_final_version
+  changed_when: false
+
+- name: Display kubectl version.
+  ansible.builtin.debug:
+    msg: "{{ kubectl_final_version.stdout }}"
+
+- name: Generate kubectl bash completion.
+  ansible.builtin.command: "{{ kubectl_bin_path }} completion bash"
+  register: kubectl_bash_completion
+  changed_when: false
+
+- name: Ensure ~/.kube directory exists.
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+    mode: "0755"
+
+- name: Install kubectl bash completion file.
+  ansible.builtin.copy:
+    content: "{{ kubectl_bash_completion.stdout }}\n"
+    dest: "{{ ansible_env.HOME }}/.kube/completion.bash.inc"
+    mode: "0644"
+
+- name: Enable kubectl bash completion in ~/.bashrc.
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    create: true
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: kubectl completion"
+    block: |
+      # kubectl shell completion
+      source "$HOME/.kube/completion.bash.inc"
+      source "/usr/share/bash-completion/bash_completion"
+      export KUBECONFIG="$HOME/.kube/config"
+
+- name: Display kubectl completion activation info.
+  ansible.builtin.debug:
+    msg: "kubectl bash completion configured in {{ ansible_env.HOME }}/.bashrc"

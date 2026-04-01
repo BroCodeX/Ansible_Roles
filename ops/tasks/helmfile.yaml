@@ -1,0 +1,62 @@
+---
+- name: Check if Helmfile binary exists.
+  ansible.builtin.stat:
+    path: "{{ helmfile_bin_path }}"
+  register: helmfile_check
+
+- name: Check Helmfile version.
+  ansible.builtin.command: "{{ helmfile_bin_path }} --version"
+  register: helmfile_existing_version
+  changed_when: false
+  failed_when: false
+  when: helmfile_check.stat.exists
+
+- name: Set Helmfile install state.
+  ansible.builtin.set_fact:
+    helmfile_needs_install: >-
+      {{ not helmfile_check.stat.exists
+      or helmfile_version not in (helmfile_existing_version.stdout | default('')) }}
+
+- name: Install Helmfile binary.
+  block:
+    - name: Download Helmfile archive.
+      ansible.builtin.unarchive:
+        src: >-
+          {{ helmfile_repo_path }}/v{{ helmfile_version }}/helmfile_{{
+          helmfile_version }}_{{ helmfile_platform }}_{{ helmfile_arch }}.tar.gz
+        dest: /tmp
+        remote_src: true
+        mode: "0755"
+
+    - name: Copy Helmfile binary into place.
+      ansible.builtin.copy:
+        src: /tmp/helmfile
+        dest: "{{ helmfile_bin_path }}"
+        mode: "0755"
+        remote_src: true
+      become: true
+  always:
+    - name: Remove Helmfile tmp binary.
+      ansible.builtin.file:
+        path: /tmp/helmfile
+        state: absent
+
+    - name: Remove Helmfile tmp README.
+      ansible.builtin.file:
+        path: /tmp/README.md
+        state: absent
+
+    - name: Remove Helmfile tmp LICENSE.
+      ansible.builtin.file:
+        path: /tmp/LICENSE
+        state: absent
+  when: helmfile_needs_install | bool
+
+- name: Get final Helmfile version.
+  ansible.builtin.command: "{{ helmfile_bin_path }} --version"
+  register: helmfile_final_version
+  changed_when: false
+
+- name: Display Helmfile version.
+  ansible.builtin.debug:
+    msg: "{{ helmfile_final_version.stdout }}"

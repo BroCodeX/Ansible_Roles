@@ -1,0 +1,105 @@
+---
+- name: Check if AWS CLI binary exists.
+  ansible.builtin.stat:
+    path: "{{ aws_cli_bin_path }}"
+  register: aws_cli_check
+
+- name: Check AWS CLI version.
+  ansible.builtin.command: "{{ aws_cli_bin_path }} --version"
+  register: aws_cli_existing_version
+  changed_when: false
+  failed_when: false
+  when: aws_cli_check.stat.exists
+
+- name: Set installed AWS CLI version.
+  ansible.builtin.set_fact:
+    aws_cli_installed_version: >-
+      {{ (aws_cli_existing_version.stdout | regex_findall('aws-cli/([^ ]+)') | first) | default('') }}
+  when: aws_cli_check.stat.exists
+
+- name: Debug AWS version parsing.
+  ansible.builtin.debug:
+    msg:
+      - "raw={{ aws_cli_existing_version.stdout | default('') }}"
+      - "parsed={{ aws_cli_installed_version | default('') }}"
+      - "target={{ aws_cli_version }}"
+  when: aws_cli_check.stat.exists
+
+- name: Set AWS CLI download parameters.
+  ansible.builtin.set_fact:
+    aws_cli_has_pinned_version: >-
+      {{ aws_cli_version is defined and (aws_cli_version | string | length) > 0 }}
+    aws_cli_needs_install: >-
+      {{ not aws_cli_check.stat.exists
+      or (
+        (aws_cli_version is defined and (aws_cli_version | string | length) > 0)
+        and (aws_cli_installed_version | default('')) != aws_cli_version
+      )
+      or not (aws_cli_version is defined and (aws_cli_version | string | length) > 0) }}
+    aws_cli_download_label: >-
+      {{ aws_cli_version if (aws_cli_version is defined and (aws_cli_version | string | length) > 0) else 'latest' }}
+    aws_cli_download_url: >-
+      {{ aws_cli_repo_path }}/awscli-exe-linux-{{ aws_cli_arch }}{{
+      '-' ~ aws_cli_version if (aws_cli_version is defined and (aws_cli_version | string | length) > 0) else '' }}.zip
+
+- name: Set AWS CLI temp paths.
+  ansible.builtin.set_fact:
+    aws_cli_tmp_dir: "/tmp/awscli-{{ aws_cli_download_label }}"
+    aws_cli_tmp_archive: "/tmp/awscli-{{ aws_cli_download_label }}.zip"
+
+- name: Install AWS CLI dependencies.
+  ansible.builtin.package:
+    name:
+      - unzip
+    state: present
+  become: true
+  when: aws_cli_needs_install | bool
+
+- name: Install AWS CLI.
+  block:
+    - name: Download AWS CLI archive.
+      ansible.builtin.get_url:
+        url: "{{ aws_cli_download_url }}"
+        dest: "{{ aws_cli_tmp_archive }}"
+        mode: "0644"
+        force: true
+
+    - name: Create a tmp dir for unpack
+      ansible.builtin.file:
+        path: "{{ aws_cli_tmp_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Unpack AWS CLI archive.
+      ansible.builtin.unarchive:
+        src: "{{ aws_cli_tmp_archive }}"
+        dest: "{{ aws_cli_tmp_dir }}"
+        remote_src: true
+
+    - name: Run AWS CLI installer.
+      ansible.builtin.command: >-
+        {{ aws_cli_tmp_dir }}/aws/install
+        --bin-dir {{ bin_path }}
+        --install-dir {{ aws_cli_install_dir }}
+        --update
+      become: true
+  always:
+    - name: Remove AWS CLI tmp archive.
+      ansible.builtin.file:
+        path: "{{ aws_cli_tmp_archive }}"
+        state: absent
+
+    - name: Remove AWS CLI tmp dir.
+      ansible.builtin.file:
+        path: "{{ aws_cli_tmp_dir }}"
+        state: absent
+  when: aws_cli_needs_install | bool
+
+- name: Get final AWS CLI version.
+  ansible.builtin.command: "{{ aws_cli_bin_path }} --version"
+  register: aws_cli_final_version
+  changed_when: false
+
+- name: Display AWS CLI version.
+  ansible.builtin.debug:
+    msg: "{{ aws_cli_final_version.stdout }}"

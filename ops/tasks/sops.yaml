@@ -1,0 +1,52 @@
+---
+- name: Check if SOPS binary exists.
+  ansible.builtin.stat:
+    path: "{{ sops_bin_path }}"
+  register: sops_check
+
+- name: Check SOPS version.
+  ansible.builtin.command: "{{ sops_bin_path }} --version"
+  register: sops_existing_version
+  changed_when: false
+  failed_when: false
+  when: sops_check.stat.exists
+
+- name: Set SOPS install state.
+  ansible.builtin.set_fact:
+    sops_needs_install: >-
+      {{ not sops_check.stat.exists
+      or sops_version not in (sops_existing_version.stdout | default('')) }}
+
+- name: Install SOPS binary.
+  block:
+    - name: Download SOPS binary.
+      ansible.builtin.get_url:
+        url: >-
+          {{ sops_repo_path }}/{{ sops_version }}/sops-{{ sops_version }}.{{
+          sops_platform }}.{{ sops_arch }}
+        dest: "/tmp/sops-{{ sops_version }}"
+        mode: "0755"
+        force: true
+
+    - name: Copy SOPS binary into place.
+      ansible.builtin.copy:
+        src: "/tmp/sops-{{ sops_version }}"
+        dest: "{{ sops_bin_path }}"
+        mode: "0755"
+        remote_src: true
+      become: true
+  always:
+    - name: Remove SOPS tmp binary.
+      ansible.builtin.file:
+        path: "/tmp/sops-{{ sops_version }}"
+        state: absent
+  when: sops_needs_install | bool
+
+- name: Get final SOPS version.
+  ansible.builtin.command: "{{ sops_bin_path }} --version"
+  register: sops_final_version
+  changed_when: false
+
+- name: Display SOPS version.
+  ansible.builtin.debug:
+    msg: "{{ sops_final_version.stdout }}"

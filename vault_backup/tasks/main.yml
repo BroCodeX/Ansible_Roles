@@ -1,0 +1,6 @@
+---
+- name: Check AWS CLI installed
+  include_tasks: aws.yml
+
+- name: Add Vault backup
+  include_tasks: vault_backup.yml

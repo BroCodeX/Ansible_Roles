@@ -1,0 +1,31 @@
+#vault variables
+backup_user: backup
+backup_pass: 
+vault_host: "127.0.0.1"
+vault_addr: "http://{{ vault_host }}:{{ vault_port }}"
+
+#cron schedule for backup and check_backup
+cron_jobs:
+  - job: /bin/bash /root/scripts/vault_backup.sh
+    minute: 0
+    hour: 3
+    name: vault_backup
+  - job: /bin/bash /root/scripts/check_vault_backup.sh
+    minute: 0
+    hour: 6
+    name: check_vault_backup
+
+#s3 credentinals
+s3_bucket: "s3_bucket-backups"
+region: "us-east-2"
+s3_path: "vault-01/vault"
+
+#alertmanager credentials
+alertmanager_basic_auth_enabled: false
+alertmanager_user: "alertmanager_user"
+alertmanager_password: "alertmanager_password"
+alertmanager_url: https://alertmanager.go.io/api/v2/alerts
+
+# aws cli
+aws_cli_download_url: https://awscli.amazonaws.com/awscli-exe-linux-{{ ansible_architecture }}.zip
+retention_policy: 30

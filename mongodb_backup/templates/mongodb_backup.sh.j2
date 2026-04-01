@@ -1,0 +1,118 @@
+#!/bin/bash
+export TZ=Europe/Moscow
+export PATH=$PATH:~/.itsumma/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DT=$(date +"%Y-%m-%d-%H%M%S")
+RETENTION_DAYS={{ retention_policy | default(7) }}
+S3_TARGET=s3://{{ s3_bucket }}/{{ s3_path }}/
+LOG=/backup/mongodb_backup.log
+ERROR_LOG=/backup/error.log
+DIR=/backup/mongodb_backup
+FN=mongodb_backup_${DT}.gz
+URL={{ alertmanager_url }}
+lockdir=/var/tmp/mongodb_backup
+pidfile=${lockdir}/pid
+
+
+{% if alertmanager_basic_auth_enabled | bool %}
+AUTH="--user '{{ alertmanager_user }}:{{ alertmanager_password }}'"
+{% else %}
+AUTH=""
+{% endif %}
+
+send_alert () {
+  ENDS_AT=$(date --iso-8601=seconds --date='+2 day')
+  curl -XPOST $URL $AUTH -d "[{
+        \"status\": \"firing\", 
+        \"labels\":{
+            \"alertname\":\"$1\",
+            \"severity\":\"warning\",
+            \"instance\":\"{{ inventory_hostname }}\",
+            \"service\":\"mongodb_backup\"
+            },
+            \"annotations\": {
+                \"description\": \"mongodb_backup\"
+            },
+            \"endsAt\":\"${ENDS_AT}\"
+}]"
+}
+
+send_resolve () {
+  ENDS_AT=$(date --iso-8601=seconds)
+  curl -XPOST $URL $AUTH -d "[{
+        \"status\": \"resolved\", 
+        \"labels\":{
+            \"alertname\":\"$1\",
+            \"severity\":\"warning\",
+            \"instance\":\"{{ inventory_hostname }}\",
+            \"service\":\"mongodb_backup\"
+            },
+            \"annotations\": {
+                \"description\": \"mongodb_backup\"
+            },
+            \"endsAt\":\"${ENDS_AT}\"
+}]"
+}
+
+if ( /usr/bin/mkdir ${lockdir} ) 2> /dev/null; then
+  /usr/bin/echo $$ > $pidfile
+  trap '/usr/bin/rm -rf "$lockdir"; exit $?' INT TERM EXIT
+
+/usr/bin/mkdir -p $DIR
+
+####################### Delete old backups (Local) ########################
+  /usr/bin/echo "[`date`] Deleting local backups older than $RETENTION_DAYS days" >>$LOG
+  find $DIR -type f -name '*gz' -mtime +$RETENTION_DAYS -delete
+##################################################################
+
+#################### Delete old backups (S3) ########################
+/usr/bin/echo "[`date`] Cleaning S3 backups older than $RETENTION_DAYS days" >>$LOG
+aws s3 ls "$S3_TARGET" | while read -r line; do
+    create_date=$(echo $line | awk '{print $1" "$2}')
+    create_ts=$(date -d "$create_date" +%s)
+    older_than_ts=$(date -d "$RETENTION_DAYS days ago" +%s)
+    if [[ $create_ts -lt $older_than_ts ]]; then
+        file_name=$(echo $line | awk '{print $4}')
+        aws s3 rm "${S3_TARGET}${file_name}"
+    fi
+done 2>>$ERROR_LOG
+####################################################################
+
+########################## Create backup ##########################
+  /usr/bin/echo "[`date`] backup mongo default started" >>$LOG
+  mongodump --uri="{{ pritunl_db_uri }}?authSource=admin" --archive=${DIR}/${FN} --gzip 2>>$LOG && send_resolve MongoBackupFailed || (send_alert MongoBackupFailed; exit 1)
+  /usr/bin/echo "[`date`] backup mongo default finished" >>$LOG
+###################################################################
+
+#################### Upload backup to s3 #####################
+  /usr/bin/echo "[`date`] uploading to s3 mongo default started" >>$LOG 
+  aws s3 cp ${DIR}/${FN} "$S3_TARGET" >>$LOG 2>&1 && send_resolve MongoUploadingFailed || send_alert MongoUploadingFailed
+  /usr/bin/echo "[`date`] uploading to s3 mongo default finished" >>$LOG
+###################################################################
+
+#################### Local size check ################################
+echo "[`date`] local size check difference started" >>$LOG
+  size1=$(stat --printf=%s $(ls -1 ${DIR}/*gz | tail -n 1))
+  size2=$(stat --printf=%s $(ls -1 ${DIR}/*gz | tail -n 2 | head -n 1))
+
+  if (( "$size1" >= "$size2" )); then
+    r=$(echo $size1 $size2 | awk '{print ($1/$2-1)*100}' | awk '{print int($1+0.5)}')
+  else
+    r=$(echo $size1 $size2 | awk '{print ($2/$1-1)*100}' | awk '{print int($1+0.5)}')
+  fi
+
+  if (( $r >= 5 )); then
+    echo `date +"%Y-%m-%d-%H%M%S"` archive_size_is_different >>$ERROR_LOG 
+    send_alert MongoBackupSizeDifferent
+  else
+    echo `date +"%Y-%m-%d-%H%M%S"` archive_size_is_ok >>$LOG && send_resolve MongoBackupSizeDifferent
+  fi
+
+  echo "Archive size difference: ${r}%" >>$LOG
+  echo "[`date`] local size check difference finished" >>$LOG
+#######################################################################
+
+/usr/bin/rm -rf "$lockdir" && send_resolve MongoBackupStillInProgress
+  trap - INT TERM EXIT
+else
+  /usr/bin/echo "Lock Exists: $lockdir owned by $(/usr/bin/cat $pidfile)" >>$LOG && send_alert MongoBackupStillInProgress
+fi

@@ -1,0 +1,12 @@
+---
+- name: Create mongodb backup user
+  include_tasks: create_mongo_user.yml
+  when: groups.mongodb.index(inventory_hostname) == 0
+
+- name: Check AWS CLI installed
+  include_tasks: aws.yml
+  when: mongodb_backup_enabled | bool == true
+
+- name: Add mongodb backup
+  include_tasks: mongodb_backup.yml
+  when: mongodb_backup_enabled | bool == true
