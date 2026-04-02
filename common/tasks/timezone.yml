@@ -1,0 +1,6 @@
+---
+
+- name: set timezone
+  become: true
+  timezone:
+    name: "{{ tz_name }}"

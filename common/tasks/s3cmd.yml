@@ -1,0 +1,23 @@
+---
+- name: Install s3cmd
+  ansible.builtin.package:
+    name: s3cmd
+    state: present
+  tags:
+    - s3cmd_install
+
+- name: Configure s3cmd
+  community.general.ini_file:
+    path: "{{ s3cmd_config_path }}"
+    section: default
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    owner: "{{ s3cmd_config_owner }}"
+    group: "{{ s3cmd_config_group }}"
+    mode: "{{ s3cmd_config_mode }}"
+    state: present
+  no_log: true
+  loop: "{{ s3cmd_config[s3_provider] | dict2items }}"
+  tags:
+    - s3cmd_config
+

@@ -1,0 +1,41 @@
+---
+- import_tasks: packages.yml
+  tags:
+    - common
+    - packages
+
+- import_tasks: timezone.yml
+  tags:
+    - common
+    - tz
+  when: set_timezone
+
+- import_tasks: sysctl.yml
+  tags:
+    - common
+    - sysctl
+  when: sysctl_parameters
+
+- import_tasks: ulimit.yml
+  tags:
+    - common
+    - ulimit
+  when: pam_limits
+
+- import_tasks: etc_hosts.yml
+  tags:
+    - common
+    - etc_hosts
+  when: etc_hosts
+
+- import_tasks: swap.yml
+  tags:
+    - common
+    - swap
+  when: swap_enable
+
+- import_tasks: s3cmd.yml
+  tags:
+    - common
+    - s3cmd
+  when: s3cmd_install

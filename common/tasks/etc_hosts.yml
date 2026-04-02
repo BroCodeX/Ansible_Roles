@@ -1,0 +1,8 @@
+- name: Add records to /etc/hosts
+  become: true
+  blockinfile:
+    path: /etc/hosts
+    block: |
+      {% for ip, hosts in etc_hosts.items() %}
+      {{ ip }} {{ hosts if hosts is string else hosts | join(' ') }}
+      {% endfor %}

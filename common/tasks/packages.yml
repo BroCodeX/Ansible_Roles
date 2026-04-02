@@ -1,0 +1,28 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: true
+  when:
+    - ansible_os_family == "Debian"
+
+- name: Upgrading all installed packages
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    DEBIAN_PRIORITY: critical
+    DEBCONF_NONINTERACTIVE_SEEN: true
+  apt:
+    update_cache: yes
+    upgrade: safe
+    cache_valid_time: 3600
+    force_apt_get: yes
+  when:
+    - ansible_os_family == "Debian"
+    - upgrade_all|default("false")
+  tags:
+    - upgrade_all
+
+- name: Install base software
+  package:
+    name: "{{ base_packages + additional_packages }}"
+    state: present
+  when: not ansible_check_mode

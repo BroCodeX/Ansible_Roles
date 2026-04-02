@@ -1,10 +1,4 @@
 ---
-- name: Set up Utils.
-  ansible.builtin.import_tasks: utilites.yaml
-  tags:
-    - utils
-    - ops
-
 - name: Set up Ansible using Pip.
   ansible.builtin.import_tasks: ansible.yaml
   tags:
@@ -45,4 +39,10 @@
   ansible.builtin.import_tasks: aws.yaml
   tags:
     - aws
+    - ops
+
+- name: Set up Openstack CLI.
+  ansible.builtin.import_tasks: openstack.yaml
+  tags:
+    - openstack
     - ops

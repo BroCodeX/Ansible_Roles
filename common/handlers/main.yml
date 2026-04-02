@@ -1,0 +1,7 @@
+---
+# handlers file for common
+- name: sshd restart
+  systemd:
+    name: sshd
+    state: restarted
+    enabled: yes

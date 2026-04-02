@@ -1,0 +1,55 @@
+---
+- name: Install OpenStack CLI via virtualenv.
+  ansible.builtin.pip:
+    name: "{{ openstack_pip_package }}"
+    virtualenv: "{{ openstack_venv_path }}"
+    virtualenv_command: python3 -m venv
+    extra_args: >-
+      {{ openstack_install_pip_extra_args
+      if (openstack_install_pip_extra_args | default('') | length) > 0 else omit }}
+  become: true
+
+- name: Install optional OpenStack components.
+  ansible.builtin.pip:
+    name: "{{ item }}"
+    virtualenv: "{{ openstack_venv_path }}"
+    virtualenv_command: virtualenv
+    extra_args: >-
+      {{ openstack_install_pip_extra_args
+      if (openstack_install_pip_extra_args | default('') | length) > 0 else omit }}
+  become: true
+  loop: "{{ openstack_components }}"
+
+- name: Link OpenStack CLI binary.
+  ansible.builtin.file:
+    src: "{{ openstack_venv_path }}/bin/openstack"
+    dest: "{{ openstack_bin_path }}"
+    state: link
+    force: true
+  become: true
+
+- name: Get final Openstack CLI version.
+  ansible.builtin.command: "{{ openstack_bin_path }} --version"
+  register: openstack_final_version
+  changed_when: false
+
+- name: Display Openstack CLI version.
+  ansible.builtin.debug:
+    msg: "{{ openstack_final_version.stdout_lines | first }}"
+  ignore_errors: true
+
+- name: Ensure OpenStack RC dir exists.
+  ansible.builtin.file:
+    path: "{{ openstack_rc_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Render OpenStack RC files.
+  ansible.builtin.template:
+    src: rcfile.j2
+    dest: "{{ openstack_rc_dir }}/{{ openstack_rc_profile.value.filename | default(openstack_rc_profile.key ~ '.sh') }}"
+    mode: "0600"
+  loop: "{{ openstack_rc | dict2items }}"
+  loop_control:
+    loop_var: openstack_rc_profile
+    label: "{{ openstack_rc_profile.key }}"

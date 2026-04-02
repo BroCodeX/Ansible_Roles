@@ -1,0 +1,31 @@
+- name: Check if swap exists
+  command: swapon --show
+  register: swap_status
+  ignore_errors: true
+  changed_when: false
+
+- name: Create swap file (if none exists)
+  command: fallocate -l "{{ swap_file_size }}" "{{ swap_file_path }}"
+  when: swap_status.rc != 0
+
+- name: Set swap permissions
+  file:
+    path: /swapfile
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Format swap
+  command: mkswap /swapfile
+  when: swap_status.rc != 0
+
+- name: Enable swap
+  command: swapon /swapfile
+  when: swap_status.rc != 0
+
+- name: Add swap to /etc/fstab
+  lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present
+  when: swap_status.rc != 0

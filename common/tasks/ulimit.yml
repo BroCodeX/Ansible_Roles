@@ -1,0 +1,12 @@
+---
+- name: Set limits
+  community.general.pam_limits:
+    backup: "{{ item.backup | default(omit) }}"
+    dest: "{{ item.dest | default(omit) }}"
+    domain: "{{ item.domain }}"
+    limit_type: "{{ item.limit_type }}"
+    limit_item: "{{ item.limit_item }}"
+    value: "{{ item.value }}"
+    use_max: "{{ item.use_max | default(omit) }}"
+    use_min: "{{ item.use_min | default(omit) }}"
+  with_items: "{{ pam_limits }}"

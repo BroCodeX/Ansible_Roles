@@ -68,3 +68,16 @@ aws_cli_arch: x86_64
 aws_cli_repo_path: https://awscli.amazonaws.com
 aws_cli_install_dir: /usr/local/aws-cli
 aws_cli_bin_path: "{{ bin_path }}/aws"
+
+# OpenStack CLI
+# https://docs.selectel.ru/cloud-servers/tools/openstack-cli/about-openstack-cli/
+openstack_pip_package: python-openstackclient
+openstack_install_pip_extra_args: ""
+openstack_bin_path: "{{ bin_path }}/openstack"
+openstack_venv_path: "/opt/openstack-venv"
+openstack_rc_dir: "{{ ansible_env.HOME }}/.openstack"
+openstack_rc: {}
+openstack_components:
+  - python-octaviaclient
+  - python-glanceclient
+  - python-manilaclient==3.4.0
