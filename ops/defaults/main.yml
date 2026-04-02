@@ -81,3 +81,7 @@ openstack_components:
   - python-octaviaclient
   - python-glanceclient
   - python-manilaclient==3.4.0
+
+# Style
+# https://github.com/jonmosco/kube-ps1?tab=readme-ov-file#using-zinit
+shell: bash

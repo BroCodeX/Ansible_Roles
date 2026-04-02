@@ -46,3 +46,9 @@
   tags:
     - openstack
     - ops
+
+- name: Make pretty style.
+  ansible.builtin.import_tasks: style.yaml
+  tags:
+    - style
+    - ops
