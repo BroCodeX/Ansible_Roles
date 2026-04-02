@@ -83,5 +83,5 @@ openstack_components:
   - python-manilaclient==3.4.0
 
 # Style
-# https://github.com/jonmosco/kube-ps1?tab=readme-ov-file#using-zinit
+# https://github.com/jonmosco/kube-ps1
 shell: bash
