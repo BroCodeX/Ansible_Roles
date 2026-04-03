@@ -70,7 +70,7 @@ aws_cli_install_dir: /usr/local/aws-cli
 aws_cli_bin_path: "{{ bin_path }}/aws"
 
 # OpenStack CLI
-# https://docs.selectel.ru/cloud-servers/tools/openstack-cli/about-openstack-cli/
+# https://github.com/openstack/python-openstackclient/tags
 openstack_pip_package: python-openstackclient
 openstack_install_pip_extra_args: ""
 openstack_bin_path: "{{ bin_path }}/openstack"
