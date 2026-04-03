@@ -1,13 +1,53 @@
 ---
+- name: Check if OpenStack is installed.
+  ansible.builtin.command: "{{ openstack_bin_path }} --version"
+  register: openstack_check
+  changed_when: false
+  failed_when: false
+
+- name: Get installed OpenStack package version.
+  ansible.builtin.command: >-
+    {{ openstack_venv_path }}/bin/python -m pip show {{ openstack_pip_package }}
+  register: openstack_package_info
+  changed_when: false
+  failed_when: false
+  when: openstack_check.rc == 0
+
+- name: Set installed OpenStack version.
+  ansible.builtin.set_fact:
+    openstack_installed_version: >-
+      {{ (openstack_package_info.stdout | regex_findall('Version:\s*([^\n\r]+)') | first) | default('') }}
+  when: openstack_check.rc == 0
+
+- name: Debug OpenStack version parsing.
+  ansible.builtin.debug:
+    msg:
+      - "raw={{ openstack_package_info.stdout | default('') }}"
+      - "parsed={{ openstack_installed_version | default('') }}"
+      - "target={{ openstack_install_version }}"
+  when: openstack_check.rc == 0
+
+- name: Set OpenStack install state.
+  ansible.builtin.set_fact:
+    openstack_needs_install: >-
+      {{ openstack_check.rc != 0
+      or (
+        (openstack_install_version | default('') | length) > 0
+        and (openstack_installed_version | default('')) != openstack_install_version
+      ) }}
+
 - name: Install OpenStack CLI via virtualenv.
   ansible.builtin.pip:
-    name: "{{ openstack_pip_package }}"
+    name: >-
+      {{ openstack_pip_package }}{{ '==' ~ openstack_install_version
+      if (openstack_install_version | default('') | length) > 0 else '' }}
     virtualenv: "{{ openstack_venv_path }}"
     virtualenv_command: python3 -m venv
     extra_args: >-
       {{ openstack_install_pip_extra_args
       if (openstack_install_pip_extra_args | default('') | length) > 0 else omit }}
   become: true
+  when: openstack_needs_install | bool
 
 - name: Install optional OpenStack components.
   ansible.builtin.pip:
@@ -19,6 +59,7 @@
       if (openstack_install_pip_extra_args | default('') | length) > 0 else omit }}
   become: true
   loop: "{{ openstack_components }}"
+  when: openstack_needs_install | bool
 
 - name: Link OpenStack CLI binary.
   ansible.builtin.file:
@@ -27,6 +68,7 @@
     state: link
     force: true
   become: true
+  when: openstack_needs_install | bool
 
 - name: Get final Openstack CLI version.
   ansible.builtin.command: "{{ openstack_bin_path }} --version"

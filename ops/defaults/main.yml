@@ -71,6 +71,7 @@ aws_cli_bin_path: "{{ bin_path }}/aws"
 
 # OpenStack CLI
 # https://github.com/openstack/python-openstackclient/tags
+openstack_install_version: "9.0.0"
 openstack_pip_package: python-openstackclient
 openstack_install_pip_extra_args: ""
 openstack_bin_path: "{{ bin_path }}/openstack"
