@@ -2,6 +2,14 @@
 
 name: {{ docker_compose_project_name }}
 
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  postgres-data:
+
 services:
 
   keycloak:
@@ -9,6 +17,15 @@ services:
     container_name: keycloak
     command: {{ keycloak_command }}
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     environment:
       KC_DB: {{ keycloak_db_engine }}
       KC_DB_USERNAME: {{ keycloak_db_username }}
@@ -30,6 +47,15 @@ services:
     ports:
       - {{ keycloak_web_host }}:{{ keycloak_web_port }}:8080
       - {{ keycloak_management_host }}:{{ keycloak_management_port }}:9000
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     logging: &logging
       driver: "json-file"
       options:
@@ -44,24 +70,42 @@ services:
           cpus: '0.2'
           memory: 512M
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   postgres:
     container_name: postgres
     restart: unless-stopped
     image: {{ keycloak_postgres_image }}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/run/postgresql
+      - /tmp
+    pids_limit: 256
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     environment:
-      POSTGRES_PASSWORD: {{ keycloak_db_password }}
-      POSTGRES_DB: {{ keycloak_db_name }}
+      POSTGRES_PASSWORD: {{ postgres_password }}
+      POSTGRES_USER: {{ postgres_user }}
+      POSTGRES_DB: {{ postgres_db }}
     volumes:
-      - ./data/postgres:/var/lib/postgresql/18/docker
+      - "postgres-data:/var/lib/postgresql"
     ports:
       - "127.0.0.1:5432:5432"
+    networks:
+      - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
-      timeout: 30s
+      timeout: 5s
       retries: 5
+      start_period: 20s
     logging: *logging
     deploy:
       resources:
@@ -71,26 +115,3 @@ services:
         reservations:
           cpus: '0.2'
           memory: 256M
-
-  postgres-exporter:
-    image: {{ keycloak_postgres_exporter_image }}
-    container_name: postgres-exporter
-    restart: unless-stopped
-    environment:
-      DATA_SOURCE_URI: "postgres:5432/{{ keycloak_db_name }}?sslmode=disable"
-      DATA_SOURCE_USER: {{ keycloak_db_username }}
-      DATA_SOURCE_PASS: {{ keycloak_db_password }}
-    ports:
-      - "{{ ansible_host }}:9187:9187"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    logging: *logging
-    deploy:
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 128M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
