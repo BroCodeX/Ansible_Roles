@@ -1,0 +1,15 @@
+---
+# Internal role vars — not intended to be overridden by callers.
+# Requires the community.hashi_vault collection (see requirements.yml) and the
+# hvac python library on the control node when Vault is enabled.
+
+# Common app.kubernetes.io labels applied to every manifest, merged with
+# k8s_manifest_extra_labels.
+k8s_manifest_common_labels: >-
+  {{
+    {
+      'app.kubernetes.io/name': k8s_manifest_name,
+      'app.kubernetes.io/managed-by': 'ansible',
+      'app.kubernetes.io/version': k8s_manifest_app_version | string
+    } | combine(k8s_manifest_extra_labels)
+  }}

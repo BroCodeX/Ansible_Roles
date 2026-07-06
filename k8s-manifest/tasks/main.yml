@@ -1,0 +1,30 @@
+---
+# Orchestrates manifest generation: validate inputs, optionally pull secrets
+# from Vault, then render the requested manifests. Kept thin on purpose — each
+# stage lives in its own include for readability.
+
+- name: Validate manifest inputs
+  ansible.builtin.include_tasks: validate.yml
+  tags:
+    - k8s_manifest
+    - validate
+
+- name: Fetch secrets from Vault
+  ansible.builtin.include_tasks: vault_secrets.yml
+  when: k8s_manifest_vault_enabled | bool
+  tags:
+    - k8s_manifest
+    - vault
+
+- name: Render Kubernetes manifests
+  ansible.builtin.include_tasks: render.yml
+  tags:
+    - k8s_manifest
+    - render
+
+- name: Deploy rendered manifests to the cluster
+  ansible.builtin.include_tasks: deploy.yml
+  when: k8s_manifest_deploy_kube | bool
+  tags:
+    - k8s_manifest
+    - deploy

@@ -1,0 +1,83 @@
+---
+# Apply the manifests rendered by render.yml to the cluster. The kubeconfig
+# arrives base64-encoded, either from a local file (path via the KUBECONFIG
+# env var) or from a Vault KV v2 secret; it's decoded to a temp file for the
+# duration of the apply, then removed. The rendered manifests directory is
+# removed once the apply succeeds.
+
+- name: Read base64-encoded kubeconfig from env-provided path
+  ansible.builtin.set_fact:
+    k8s_manifest_kubeconfig_raw: "{{ lookup('ansible.builtin.file', k8s_manifest_kubeconfig) }}"
+  no_log: true
+  when: k8s_manifest_kubeconfig_source == 'env'
+
+- name: Read base64-encoded kubeconfig from Vault
+  ansible.builtin.set_fact:
+    k8s_manifest_kubeconfig_raw: >-
+      {{ lookup('community.hashi_vault.vault_kv2_get',
+                k8s_manifest_kubeconfig_vault_path,
+                engine_mount_point=k8s_manifest_kubeconfig_vault_mount,
+                url=k8s_manifest_vault_addr,
+                auth_method=k8s_manifest_vault_auth_method,
+                token=k8s_manifest_vault_token,
+                validate_certs=k8s_manifest_vault_validate_certs).secret[k8s_manifest_kubeconfig_vault_key] }}
+  no_log: true
+  when: k8s_manifest_kubeconfig_source == 'vault'
+
+- name: Decode kubeconfig
+  ansible.builtin.set_fact:
+    k8s_manifest_kubeconfig_decoded: "{{ k8s_manifest_kubeconfig_raw | b64decode }}"
+  no_log: true
+
+- name: Apply rendered manifests
+  block:
+    - name: Create temp file for decoded kubeconfig
+      ansible.builtin.tempfile:
+        state: file
+        suffix: kubeconfig
+      register: k8s_manifest_kubeconfig_tempfile
+      check_mode: false
+
+    - name: Write decoded kubeconfig to temp file
+      ansible.builtin.copy:
+        content: "{{ k8s_manifest_kubeconfig_decoded }}"
+        dest: "{{ k8s_manifest_kubeconfig_tempfile.path }}"
+        mode: "0600"
+      no_log: true
+      check_mode: false
+
+    - name: Ensure target namespace exists
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ k8s_manifest_kubeconfig_tempfile.path }}"
+        context: "{{ k8s_manifest_kubecontext or omit }}"
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ k8s_manifest_namespace }}"
+      check_mode: false
+
+    - name: Deploy rendered manifests to the cluster
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ k8s_manifest_kubeconfig_tempfile.path }}"
+        context: "{{ k8s_manifest_kubecontext or omit }}"
+        src: "{{ k8s_manifest_output_path }}/{{ item }}.yaml"
+      loop: "{{ k8s_manifest_kinds }}"
+      loop_control:
+        label: "{{ item }}.yaml"
+      check_mode: false
+
+    - name: Remove rendered manifests directory
+      ansible.builtin.file:
+        path: "{{ k8s_manifest_output_path }}"
+        state: absent
+      check_mode: false
+  always:
+    - name: Remove decoded kubeconfig temp file
+      ansible.builtin.file:
+        path: "{{ k8s_manifest_kubeconfig_tempfile.path }}"
+        state: absent
+      when: k8s_manifest_kubeconfig_tempfile is defined and k8s_manifest_kubeconfig_tempfile.path is defined
+      check_mode: false

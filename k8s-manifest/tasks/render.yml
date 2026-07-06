@@ -1,0 +1,27 @@
+---
+# Merge literal + Vault-sourced secret data, then render one file per requested
+# kind into the output directory.
+
+- name: Compute effective Secret data (literal + Vault, Vault wins)
+  ansible.builtin.set_fact:
+    k8s_manifest_secret_effective_data: >-
+      {{ k8s_manifest_secret_data | combine(k8s_manifest_vault_secrets | default({})) }}
+  no_log: true
+
+- name: Ensure output directory exists
+  ansible.builtin.file:
+    path: "{{ k8s_manifest_output_path }}"
+    state: directory
+    mode: "0755"
+  check_mode: false
+
+- name: Render requested manifests
+  ansible.builtin.template:
+    src: "{{ item }}.yaml.j2"
+    dest: "{{ k8s_manifest_output_path }}/{{ item }}.yaml"
+    mode: "0644"
+  loop: "{{ k8s_manifest_kinds }}"
+  loop_control:
+    label: "{{ item }}.yaml"
+  no_log: true
+  check_mode: false

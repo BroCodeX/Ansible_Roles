@@ -1,0 +1,103 @@
+---
+- name: Assert core identity is defined
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_name | length > 0
+      - k8s_manifest_name is match('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')
+      - k8s_manifest_output_path | length > 0
+      - k8s_manifest_kinds | length > 0
+    fail_msg: >-
+      Set k8s_manifest_name (lowercase RFC1123), k8s_manifest_output_path, and
+      at least one entry in k8s_manifest_kinds.
+    quiet: true
+
+- name: Assert requested manifest kinds are supported
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_kinds | difference(k8s_manifest_supported_kinds) | length == 0
+    fail_msg: >-
+      Unsupported kind(s): {{ k8s_manifest_kinds | difference(k8s_manifest_supported_kinds) | join(', ') }}.
+      Supported: {{ k8s_manifest_supported_kinds | join(', ') }}.
+    quiet: true
+  vars:
+    k8s_manifest_supported_kinds:
+      - deployment
+      - service
+      - ingress
+      - secret
+      - configmap
+      - serviceaccount
+
+- name: Assert Vault settings when Vault is enabled
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_vault_addr | length > 0
+      - k8s_manifest_vault_token | length > 0
+      - k8s_manifest_vault_kv_enabled | bool or k8s_manifest_vault_dynamic_enabled | bool
+    fail_msg: >-
+      When k8s_manifest_vault_enabled is true, set k8s_manifest_vault_addr, provide
+      a token (VAULT_TOKEN), and enable KV and/or dynamic secrets.
+    quiet: true
+  when: k8s_manifest_vault_enabled | bool
+
+- name: Assert dynamic Vault path is complete
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_vault_dynamic_mount | length > 0
+      - k8s_manifest_vault_dynamic_role | length > 0
+    fail_msg: >-
+      k8s_manifest_vault_dynamic_mount and k8s_manifest_vault_dynamic_role are
+      required when dynamic secrets are enabled.
+    quiet: true
+  when:
+    - k8s_manifest_vault_enabled | bool
+    - k8s_manifest_vault_dynamic_enabled | bool
+
+- name: Assert KV v2 Vault path is complete
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_vault_kv_mount | length > 0
+      - k8s_manifest_vault_kv_path | length > 0
+    fail_msg: >-
+      k8s_manifest_vault_kv_mount and k8s_manifest_vault_kv_path are required
+      when KV secrets are enabled.
+    quiet: true
+  when:
+    - k8s_manifest_vault_enabled | bool
+    - k8s_manifest_vault_kv_enabled | bool
+
+- name: Assert kubeconfig source is supported
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_kubeconfig_source in ['env', 'vault']
+    fail_msg: >-
+      k8s_manifest_kubeconfig_source must be "env" or "vault", got
+      "{{ k8s_manifest_kubeconfig_source }}".
+    quiet: true
+  when: k8s_manifest_deploy_kube | bool
+
+- name: Assert kubeconfig is available from the env source
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_kubeconfig | length > 0
+    fail_msg: >-
+      k8s_manifest_deploy_kube is true and k8s_manifest_kubeconfig_source is "env"
+      but no kubeconfig path was found. Set the KUBECONFIG environment variable
+      to a base64-encoded kubeconfig file.
+    quiet: true
+  when:
+    - k8s_manifest_deploy_kube | bool
+    - k8s_manifest_kubeconfig_source == 'env'
+
+- name: Assert kubeconfig Vault path is complete
+  ansible.builtin.assert:
+    that:
+      - k8s_manifest_kubeconfig_vault_mount | length > 0
+      - k8s_manifest_kubeconfig_vault_path | length > 0
+    fail_msg: >-
+      k8s_manifest_kubeconfig_vault_mount and k8s_manifest_kubeconfig_vault_path
+      are required when k8s_manifest_kubeconfig_source is "vault".
+    quiet: true
+  when:
+    - k8s_manifest_deploy_kube | bool
+    - k8s_manifest_kubeconfig_source == 'vault'

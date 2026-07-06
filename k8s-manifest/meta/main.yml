@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: k8s_manifest
+  namespace: practicum
+  author: platform
+  description: >-
+    Render plain Kubernetes manifests from role variables, optionally
+    injecting secrets pulled from HashiCorp Vault at generation time.
+  license: MIT
+  min_ansible_version: "2.14"
+  galaxy_tags:
+    - kubernetes
+    - manifests
+    - vault
+dependencies: []

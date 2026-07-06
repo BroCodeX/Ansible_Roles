@@ -1,0 +1,114 @@
+---
+# =============================================================================
+# k8s-manifest role — user-facing knobs
+# =============================================================================
+# Override any of these from a vars file / include_vars. The role renders one
+# file per entry in `k8s_manifest_kinds` into `k8s_manifest_output_path`.
+
+# --- Identity (shared by every manifest) -------------------------------------
+k8s_manifest_name: ""                       # required, RFC1123 (a-z0-9-)
+k8s_manifest_namespace: default
+# Extra labels merged onto every rendered object (on top of app.kubernetes.io).
+k8s_manifest_extra_labels: {}
+k8s_manifest_app_version: "1.0"
+
+# Which manifests to render. Each value maps to templates/<value>.yaml.j2.
+# Supported: deployment, service, ingress, secret, configmap, serviceaccount
+k8s_manifest_kinds:
+  - deployment
+
+# Where the rendered YAML is written.
+k8s_manifest_output_path: "{{ playbook_dir }}/manifests"
+
+# --- Deployment --------------------------------------------------------------
+k8s_manifest_replicas: 1
+k8s_manifest_image: "alpine:latest"
+k8s_manifest_container_name: "{{ k8s_manifest_name }}"
+k8s_manifest_command: []                    # e.g. ["sleep", "infinity"]
+k8s_manifest_args: []
+k8s_manifest_container_port: 0              # 0 = do not declare a port
+k8s_manifest_resources: {}                  # raw resources block, e.g. {limits: {...}}
+# Literal env vars: list of {name: X, value: Y}.
+k8s_manifest_env: []
+# When true, the whole Secret is loaded into the container as env via envFrom.
+k8s_manifest_env_from_secret: false
+
+# --- Service -----------------------------------------------------------------
+k8s_manifest_service_type: ClusterIP
+k8s_manifest_service_port: 80
+k8s_manifest_service_target_port: "{{ k8s_manifest_container_port }}"
+
+# --- Ingress -----------------------------------------------------------------
+k8s_manifest_ingress_class: nginx
+k8s_manifest_ingress_host: ""
+k8s_manifest_ingress_path: /
+k8s_manifest_ingress_path_type: Prefix
+k8s_manifest_ingress_annotations: {}
+k8s_manifest_ingress_tls: []                # list of {hosts: [...], secretName: ...}
+
+# --- Secret ------------------------------------------------------------------
+k8s_manifest_secret_name: "{{ k8s_manifest_name }}-secret"
+k8s_manifest_secret_type: Opaque
+# Literal key/value pairs baked into the Secret (plaintext; rendered as
+# stringData). Vault-sourced values are merged on top of these.
+k8s_manifest_secret_data: {}
+
+# --- ConfigMap ---------------------------------------------------------------
+k8s_manifest_configmap_name: "{{ k8s_manifest_name }}-config"
+k8s_manifest_configmap_data: {}
+
+# --- ServiceAccount ----------------------------------------------------------
+k8s_manifest_service_account_name: "{{ k8s_manifest_name }}"
+
+# =============================================================================
+# Vault integration (community.hashi_vault lookups, evaluated on the control
+# node at generation time). All Vault settings live here in role vars.
+# =============================================================================
+k8s_manifest_vault_enabled: false
+k8s_manifest_vault_addr: "https://vault.158.160.237.187.nip.io"
+k8s_manifest_vault_auth_method: token
+# Defaults to the VAULT_TOKEN env var; override for other auth methods.
+k8s_manifest_vault_token: "{{ lookup('ansible.builtin.env', 'VAULT_TOKEN') }}"
+k8s_manifest_vault_validate_certs: true
+
+# Static KV v2 secrets: read every key at <mount>/<path> (or the subset in
+# k8s_manifest_vault_kv_keys) and expose them for the Secret manifest.
+k8s_manifest_vault_kv_enabled: false
+k8s_manifest_vault_kv_mount: ""
+k8s_manifest_vault_kv_path: ""
+k8s_manifest_vault_kv_keys: []             # [] = keep all keys at the path
+
+# Dynamic secrets: read a leased credential from <mount>/creds/<role>.
+k8s_manifest_vault_dynamic_enabled: false
+k8s_manifest_vault_dynamic_mount: ""       # e.g. "database"
+k8s_manifest_vault_dynamic_role: ""        # e.g. "app-readonly"
+# Which fields of the dynamic lease to keep (username/password by default).
+k8s_manifest_vault_dynamic_keys:
+  - username
+  - password
+
+# =============================================================================
+# Deploy (kubernetes.core.k8s, applied from the control node at render time).
+# =============================================================================
+# Master switch: apply the rendered manifests to the cluster after rendering.
+k8s_manifest_deploy_kube: false
+
+# Where to read the (base64-encoded) kubeconfig from: "env" or "vault".
+k8s_manifest_kubeconfig_source: env
+
+# --- source: env --------------------------------------------------------
+# Path to the kubeconfig file, provided via the KUBECONFIG env var. The file
+# content itself is expected to be base64-encoded; deploy.yml decodes it to a
+# temp file before use.
+k8s_manifest_kubeconfig: "{{ lookup('ansible.builtin.env', 'KUBECONFIG') }}"
+
+# --- source: vault --------------------------------------------------------
+# Read the base64-encoded kubeconfig from a Vault KV v2 secret, using the
+# same Vault connection settings as the block above (k8s_manifest_vault_*).
+k8s_manifest_kubeconfig_vault_mount: ""
+k8s_manifest_kubeconfig_vault_path: ""
+k8s_manifest_kubeconfig_vault_key: "kubeconfig"  # key within that secret
+
+# Context to use from the kubeconfig (either source). Empty = current-context
+# in the file.
+k8s_manifest_kubecontext: ""

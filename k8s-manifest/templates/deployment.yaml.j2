@@ -1,0 +1,44 @@
+{{ '---' }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ k8s_manifest_name }}
+  namespace: {{ k8s_manifest_namespace }}
+  labels:
+{{ k8s_manifest_common_labels | to_nice_yaml(indent=2) | trim('\n') | indent(4, first=True) }}
+spec:
+  replicas: {{ k8s_manifest_replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ k8s_manifest_name }}
+  template:
+    metadata:
+      labels:
+{{ k8s_manifest_common_labels | to_nice_yaml(indent=2) | trim('\n') | indent(8, first=True) }}
+    spec:
+      containers:
+        - name: {{ k8s_manifest_container_name }}
+          image: {{ k8s_manifest_image }}
+{% if k8s_manifest_command | length > 0 %}
+          command: {{ k8s_manifest_command | to_json }}
+{% endif %}
+{% if k8s_manifest_args | length > 0 %}
+          args: {{ k8s_manifest_args | to_json }}
+{% endif %}
+{% if k8s_manifest_container_port | int > 0 %}
+          ports:
+            - containerPort: {{ k8s_manifest_container_port | int }}
+{% endif %}
+{% if k8s_manifest_env | length > 0 %}
+          env:
+{{ k8s_manifest_env | to_nice_yaml(indent=2) | trim('\n') | indent(12, first=True) }}
+{% endif %}
+{% if k8s_manifest_env_from_secret | bool %}
+          envFrom:
+            - secretRef:
+                name: {{ k8s_manifest_secret_name }}
+{% endif %}
+{% if k8s_manifest_resources | length > 0 %}
+          resources:
+{{ k8s_manifest_resources | to_nice_yaml(indent=2) | trim('\n') | indent(12, first=True) }}
+{% endif %}

@@ -1,0 +1,29 @@
+{{ '---' }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ k8s_manifest_name }}
+  namespace: {{ k8s_manifest_namespace }}
+  labels:
+{{ k8s_manifest_common_labels | to_nice_yaml(indent=2) | trim('\n') | indent(4, first=True) }}
+{% if k8s_manifest_ingress_annotations | length > 0 %}
+  annotations:
+{{ k8s_manifest_ingress_annotations | to_nice_yaml(indent=2) | trim('\n') | indent(4, first=True) }}
+{% endif %}
+spec:
+  ingressClassName: {{ k8s_manifest_ingress_class }}
+{% if k8s_manifest_ingress_tls | length > 0 %}
+  tls:
+{{ k8s_manifest_ingress_tls | to_nice_yaml(indent=2) | trim('\n') | indent(4, first=True) }}
+{% endif %}
+  rules:
+    - host: {{ k8s_manifest_ingress_host }}
+      http:
+        paths:
+          - path: {{ k8s_manifest_ingress_path }}
+            pathType: {{ k8s_manifest_ingress_path_type }}
+            backend:
+              service:
+                name: {{ k8s_manifest_name }}
+                port:
+                  number: {{ k8s_manifest_service_port | int }}

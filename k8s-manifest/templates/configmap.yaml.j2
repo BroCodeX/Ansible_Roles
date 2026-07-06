@@ -1,0 +1,16 @@
+{{ '---' }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ k8s_manifest_configmap_name }}
+  namespace: {{ k8s_manifest_namespace }}
+  labels:
+{{ k8s_manifest_common_labels | to_nice_yaml(indent=2) | trim('\n') | indent(4, first=True) }}
+{% if k8s_manifest_configmap_data | length > 0 %}
+data:
+{% for key, value in k8s_manifest_configmap_data | dictsort %}
+  {{ key }}: {{ value | string | to_json }}
+{% endfor %}
+{% else %}
+data: {}
+{% endif %}
