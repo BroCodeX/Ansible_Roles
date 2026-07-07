@@ -1,0 +1,66 @@
+# {{ ansible_managed }}
+
+name: {{ ldap_compose_project_name }}
+
+networks:
+  ldap:
+    internal: false
+  keycloak_backend:
+    external: true
+    name: keycloak_backend
+
+volumes:
+  ldap-data:
+  ldap-config:
+
+services:
+
+  openldap:
+    image: {{ ldap_image }}
+    container_name: {{ ldap_container_name }}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1024
+    environment:
+      LDAP_ORGANISATION: "{{ ldap_organisation }}"
+      LDAP_DOMAIN: "{{ ldap_domain }}"
+      LDAP_ADMIN_PASSWORD: "{{ ldap_admin_password }}"
+      LDAP_CONFIG_PASSWORD: "{{ ldap_config_password }}"
+      LDAP_READONLY_USER: "{{ ldap_readonly_user_enabled }}"
+      LDAP_READONLY_USER_USERNAME: "{{ ldap_readonly_user_username }}"
+      LDAP_READONLY_USER_PASSWORD: "{{ ldap_readonly_user_password }}"
+      LDAP_TLS: "{{ ldap_tls_enabled }}"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "{{ ldap_remove_config_after_setup }}"
+    ports:
+      - "{{ ldap_host }}:{{ ldap_port }}:389"
+      - "{{ ldap_host }}:{{ ldaps_port }}:636"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/ldap/slapd.d
+    networks:
+      - ldap
+      - keycloak_backend
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -b '' -s base '(objectClass=*)' namingContexts 2>/dev/null | grep -q 'result: 0'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+          pids: 256
+        reservations:
+          cpus: '0.10'
+          memory: 64M

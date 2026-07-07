@@ -1,0 +1,96 @@
+# {{ ansible_managed }}
+
+name: {{ docker_compose_project_name }}
+
+networks:
+  vault-net:
+    driver: bridge
+    internal: false
+
+volumes:
+  vault1-data:
+  vault2-data:
+
+services:
+  vault1:
+    image: {{ vault_image }}
+    container_name: vault1
+    hostname: vault1
+    command: server
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - IPC_LOCK
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - "vault1-data:/vault/data"
+      - "./vault1/config.hcl:/vault/config/config.hcl:ro"
+    ports:
+      - "{{ vault_host }}:{{ vault1_api_port }}:8200"
+    networks:
+      - vault-net
+    healthcheck:
+      # exit 2 = sealed (expected on startup), exit 0 = active — both are healthy container states
+      test: ["CMD-SHELL", "vault status -address=http://localhost:8200; ec=$$?; [ $$ec -eq 0 ] || [ $$ec -eq 2 ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: &logging
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  vault2:
+    image: {{ vault_image }}
+    container_name: vault2
+    hostname: vault2
+    command: server
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - IPC_LOCK
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - "vault2-data:/vault/data"
+      - "./vault2/config.hcl:/vault/config/config.hcl:ro"
+    ports:
+      - "{{ vault_host }}:{{ vault2_api_port }}:8200"
+    networks:
+      - vault-net
+    healthcheck:
+      test: ["CMD-SHELL", "vault status -address=http://localhost:8200; ec=$$?; [ $$ec -eq 0 ] || [ $$ec -eq 2 ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M

@@ -1,0 +1,32 @@
+---
+- name: Template LDIF files to remote host
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ ldap_project_path }}/{{ item | basename | regex_replace('\\.j2$', '') }}"
+    mode: "0600"
+  no_log: "{{ ldap_ldif_no_log }}"
+  loop: "{{ query('fileglob', role_path + '/templates/*.ldif.j2') | sort }}"
+
+- name: Copy LDIF files into container
+  ansible.builtin.command:
+    cmd: >-
+      docker compose -p {{ ldap_compose_project_name }}
+      cp {{ ldap_project_path }}/{{ item | basename | regex_replace('\.j2$', '') }}
+      openldap:/tmp/
+  loop: "{{ query('fileglob', role_path + '/templates/*.ldif.j2') | sort }}"
+  changed_when: false
+
+- name: Import LDIF files into LDAP
+  community.docker.docker_container_exec:
+    container: "{{ ldap_container_name }}"
+    command: >-
+      ldapadd -c
+      -H ldapi:///
+      -D "cn=admin,{{ ldap_base_dn }}"
+      -w {{ ldap_admin_password }}
+      -f /tmp/{{ item | basename | regex_replace('\.j2$', '') }}
+  register: ldif_result
+  changed_when: "'adding new entry' in (ldif_result.stdout | default(''))"
+  failed_when: ldif_result.rc is defined and ldif_result.rc not in [0, 68]
+  loop: "{{ query('fileglob', role_path + '/templates/*.ldif.j2') | sort }}"
+  no_log: true

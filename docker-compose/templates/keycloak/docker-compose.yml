@@ -21,7 +21,6 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    pids_limit: 512
     ulimits:
       nofile:
         soft: 65536
@@ -51,7 +50,11 @@ services:
       - frontend
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health/ready || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "{ printf 'HEAD /health/ready HTTP/1.0\r\n\r\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/{{ keycloak_management_port }}"
+        ]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -66,6 +69,7 @@ services:
         limits:
           cpus: '0.8'
           memory: 800M
+          pids: 512
         reservations:
           cpus: '0.2'
           memory: 512M
@@ -77,15 +81,12 @@ services:
     container_name: postgres
     restart: unless-stopped
     image: {{ keycloak_postgres_image }}
-    cap_drop:
-      - ALL
     security_opt:
       - no-new-privileges:true
     read_only: true
     tmpfs:
       - /var/run/postgresql
       - /tmp
-    pids_limit: 256
     ulimits:
       nofile:
         soft: 65536
@@ -101,7 +102,7 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -112,6 +113,7 @@ services:
         limits:
           cpus: '0.8'
           memory: 800M
+          pids: 256
         reservations:
           cpus: '0.2'
           memory: 256M

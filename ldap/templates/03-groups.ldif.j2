@@ -1,0 +1,37 @@
+# Test groups with member assignments
+# devops  — jdoe, bjohnson, cwilson, dlee
+# managers — jsmith, abrown, mgarcia, schen
+
+dn: uid=dlee,ou=people,{{ ldap_base_dn }}
+objectClass: inetOrgPerson
+cn: David Lee
+sn: Lee
+givenName: David
+uid: dlee
+mail: dlee@{{ ldap_domain }}
+userPassword: {SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
+
+dn: uid=schen,ou=people,{{ ldap_base_dn }}
+objectClass: inetOrgPerson
+cn: Sophie Chen
+sn: Chen
+givenName: Sophie
+uid: schen
+mail: schen@{{ ldap_domain }}
+userPassword: {SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
+
+dn: cn=devops,ou=groups,{{ ldap_base_dn }}
+objectClass: groupOfNames
+cn: devops
+member: uid=jdoe,ou=people,{{ ldap_base_dn }}
+member: uid=bjohnson,ou=people,{{ ldap_base_dn }}
+member: uid=cwilson,ou=people,{{ ldap_base_dn }}
+member: uid=dlee,ou=people,{{ ldap_base_dn }}
+
+dn: cn=managers,ou=groups,{{ ldap_base_dn }}
+objectClass: groupOfNames
+cn: managers
+member: uid=jsmith,ou=people,{{ ldap_base_dn }}
+member: uid=abrown,ou=people,{{ ldap_base_dn }}
+member: uid=mgarcia,ou=people,{{ ldap_base_dn }}
+member: uid=schen,ou=people,{{ ldap_base_dn }}
