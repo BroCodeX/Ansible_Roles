@@ -1,0 +1,21 @@
+# {{ ansible_managed }}
+# Redis configuration for instance: {{ redis_instance.name }}
+
+port {{ redis_instance.port }}
+dir /data
+
+bind 0.0.0.0
+protected-mode {{ 'yes' if redis_instance.password | default('') | length > 0 else 'no' }}
+{% if redis_instance.password | default('') | length > 0 %}
+requirepass {{ redis_instance.password }}
+{% endif %}
+
+maxmemory {{ redis_instance.maxmemory }}
+maxmemory-policy {{ redis_instance.maxmemory_policy | default('allkeys-lru') }}
+
+{% if redis_instance.appendonly | default(false) %}
+appendonly yes
+save ""
+{% else %}
+appendonly no
+{% endif %}

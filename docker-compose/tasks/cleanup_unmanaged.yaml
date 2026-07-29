@@ -22,7 +22,7 @@
 
 - name: Set exist files for project dir
   ansible.builtin.set_fact:
-    exist_files: "{{ (project_dir_files.files + project_files.files) | map(attribute='path') | list | regex_replace(docker_compose_project_path+'/', '') }}"
+    exist_files: "{{ (project_dir_files.files + project_files.files) | map(attribute='path') | map('regex_replace', docker_compose_project_path+'/', '') | list }}"
 
 - name: Set managed files list
   ansible.builtin.set_fact:

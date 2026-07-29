@@ -1,0 +1,99 @@
+# {{ ansible_managed }}
+
+name: redis-{{ redis_instance.name }}
+
+x-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+
+  redis:
+    image: "{{ redis_image }}"
+    container_name: "redis-{{ redis_instance.name }}"
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+    volumes:
+      - "./redis.conf:/usr/local/etc/redis/redis.conf:ro"
+      - "/data/{{ redis_instance.name }}:/data"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          cpus: "{{ redis_instance.cpu_limit }}"
+          memory: "{{ redis_instance.mem_limit }}"
+        reservations:
+          cpus: "{{ redis_instance.cpu_reservation }}"
+          memory: "{{ redis_instance.mem_reservation }}"
+    logging: *logging
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - "-p"
+        - "{{ redis_instance.port }}"
+{% if redis_instance.password | default('') | length > 0 %}
+        - "-a"
+        - "{{ redis_instance.password }}"
+        - "--no-auth-warning"
+{% endif %}
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis-exporter:
+    image: "{{ redis_exporter_image }}"
+    container_name: "redis-{{ redis_instance.name }}-exporter"
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      REDIS_ADDR: "redis://127.0.0.1:{{ redis_instance.port }}"
+      REDIS_EXPORTER_WEB_LISTEN_ADDRESS: ":{{ redis_instance.exporter_port }}"
+{% if redis_instance.password | default('') | length > 0 %}
+      REDIS_PASSWORD: "{{ redis_instance.password }}"
+{% endif %}
+    depends_on:
+      - redis
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    deploy:
+      resources:
+        limits:
+          cpus: "{{ redis_instance.exporter_cpu_limit }}"
+          memory: "{{ redis_instance.exporter_mem_limit }}"
+        reservations:
+          cpus: "{{ redis_instance.exporter_cpu_reservation }}"
+          memory: "{{ redis_instance.exporter_mem_reservation }}"
+    logging: *logging
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - "-qO-"
+        - "http://127.0.0.1:{{ redis_instance.exporter_port }}/metrics"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
