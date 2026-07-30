@@ -47,3 +47,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+networks:
+  db-net:
+    name: db-net
+    internal: true 
+
+volumes:
+  postgres-data:
