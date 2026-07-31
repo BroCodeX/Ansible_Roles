@@ -13,7 +13,7 @@ services:
   redis:
     image: "{{ redis_image }}"
     container_name: "redis-{{ redis_instance.name }}"
-    restart: unless-stopped
+    restart: always
     network_mode: host
     command:
       - redis-server
@@ -33,11 +33,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "{{ redis_instance.cpu_limit }}"
-          memory: "{{ redis_instance.mem_limit }}"
+          cpus: "{{ redis_instance.cpu_limit | default('0.2') }}"
+          memory: "{{ redis_instance.mem_limit | default('512M') }}"
         reservations:
-          cpus: "{{ redis_instance.cpu_reservation }}"
-          memory: "{{ redis_instance.mem_reservation }}"
+          cpus: "{{ redis_instance.cpu_reservation | default('0.05') }}"
+          memory: "{{ redis_instance.mem_reservation | default('100M') }}"
     logging: *logging
     healthcheck:
       test:
@@ -59,7 +59,7 @@ services:
   redis-exporter:
     image: "{{ redis_exporter_image }}"
     container_name: "redis-{{ redis_instance.name }}-exporter"
-    restart: unless-stopped
+    restart: always
     network_mode: host
     environment:
       REDIS_ADDR: "redis://127.0.0.1:{{ redis_instance.port }}"
@@ -81,11 +81,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "{{ redis_instance.exporter_cpu_limit }}"
-          memory: "{{ redis_instance.exporter_mem_limit }}"
+          cpus: "{{ redis_instance.exporter_cpu_limit | default('0.1') }}"
+          memory: "{{ redis_instance.exporter_mem_limit | default('128M') }}"
         reservations:
-          cpus: "{{ redis_instance.exporter_cpu_reservation }}"
-          memory: "{{ redis_instance.exporter_mem_reservation }}"
+          cpus: "{{ redis_instance.exporter_cpu_reservation | default('0.02') }}"
+          memory: "{{ redis_instance.exporter_mem_reservation | default('32M') }}"
     logging: *logging
     healthcheck:
       test:

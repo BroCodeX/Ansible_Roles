@@ -10,8 +10,8 @@ protected-mode {{ 'yes' if redis_instance.password | default('') | length > 0 el
 requirepass {{ redis_instance.password }}
 {% endif %}
 
-maxmemory {{ redis_instance.maxmemory }}
-maxmemory-policy {{ redis_instance.maxmemory_policy | default('allkeys-lru') }}
+maxmemory {{ redis_instance.maxmemory | default(0) }}
+maxmemory-policy {{ redis_instance.maxmemory_policy | default('noeviction') }}
 
 {% if redis_instance.appendonly | default(false) %}
 appendonly yes
