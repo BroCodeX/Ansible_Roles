@@ -14,8 +14,6 @@ services:
   postgres:
     image: {{ postgres_image }}
     restart: unless-stopped
-    ports:
-      - "{{ postgres_port }}:5432"
     volumes:
       - "postgres-data:/var/lib/postgresql"
     deploy:
