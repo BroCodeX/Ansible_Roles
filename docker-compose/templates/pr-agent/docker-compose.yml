@@ -1,0 +1,67 @@
+# {{ ansible_managed }}
+# https://docs.pr-agent.ai/installation/gitlab/#run-a-gitlab-webhook-server
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  pr-agent-gitlab-webhook:
+    build:
+      context: "{{ pr_agent_dir_path }}"
+      dockerfile: "{{ pr_agent_dockerfile_path }}"
+      target: gitlab_webhook
+    image: pr-agent:gitlab_webhook
+    container_name: pr-agent-gitlab-webhook
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    extra_hosts:
+      - "{{ extra_host }}:host-gateway"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # cap_add:
+    #   - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /root:rw,noexec,nosuid,nodev,size=64m
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 256
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    pids_limit: 256
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 2048
+    logging: *default-logging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import socket; socket.create_connection(('127.0.0.1', 3000), timeout=3).close()",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - pr-agent-net
+
+networks:
+  pr-agent-net:
+    driver: bridge
