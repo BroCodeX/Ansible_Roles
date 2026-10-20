@@ -1,0 +1,40 @@
+# {{ ansible_managed }}
+{{ ([item.domain] + (item.aliases | default([]))) | join(', ') }} {
+	log {
+		output file {{ caddy_log_dir }}/{{ item.domain }}.log {
+			mode {{ caddy_log_mode }}
+			roll_size {{ caddy_log_roll_size }}
+			roll_keep {{ caddy_log_roll_keep }}
+		}
+		format {{ item.log_format | default(caddy_log_format) }}
+	}
+{% if item.encode | default(true) %}
+
+	encode
+{% endif %}
+{% if item.basic_auth is defined and item.basic_auth.users | default([]) | length > 0 %}
+{% set ba = item.basic_auth %}
+
+	basic_auth {{ ba.path | default('') }} bcrypt{{ ' "' ~ ba.realm ~ '"' if ba.realm is defined else '' }} {
+{% for u in ba.users %}
+{# bcrypt salt is derived from user+domain so the hash is stable between runs (idempotent) #}
+{% set salt = ((u.name ~ item.domain) | hash('sha256'))[:21] ~ '.' %}
+		{{ u.name }} {{ u.password_hash | default(u.password | password_hash('bcrypt', salt, rounds=12, ident='2b')) }}
+{% endfor %}
+	}
+{% endif %}
+{% if item.reverse_proxy is defined %}
+
+	reverse_proxy {{ item.reverse_proxy }}
+{% elif item.root is defined %}
+
+	root * {{ item.root }}
+	file_server
+{% endif %}
+{% if item.extra_config is defined %}
+
+{% for line in item.extra_config.splitlines() %}
+	{{ line }}
+{% endfor %}
+{% endif %}
+}

@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+{% if caddy_global_options %}
+{
+{% for opt in caddy_global_options %}
+	{{ opt }}
+{% endfor %}
+}
+
+{% endif %}
+# Per-domain configs
+import {{ caddy_conf_d_dir }}/*.caddy

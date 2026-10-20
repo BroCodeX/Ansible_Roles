@@ -1,0 +1,53 @@
+---
+caddy_package: caddy
+# present | latest
+caddy_package_state: present
+caddy_service_enabled: true
+
+# Official Cloudsmith repo for Debian-like systems
+# https://caddyserver.com/docs/install#debian-ubuntu-raspbian
+caddy_apt_key_url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+caddy_apt_list_url: https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt
+caddy_apt_keyring: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+
+# Main config
+caddy_config_dir: /etc/caddy
+caddy_conf_d_dir: "{{ caddy_config_dir }}/conf.d"
+caddy_main_config: "{{ caddy_config_dir }}/Caddyfile"
+# Global options block content (one directive per line), e.g.
+#   caddy_global_options:
+#     - email admin@example.com
+caddy_global_options: []
+
+# Logging: every site gets {{ caddy_log_dir }}/<domain>.log
+caddy_log_dir: /var/log
+caddy_log_format: json
+caddy_log_mode: "0640"
+caddy_log_roll_size: 100MiB
+caddy_log_roll_keep: 10
+caddy_user: caddy
+caddy_group: caddy
+
+# Sites, one file per domain in conf.d.
+#
+# caddy_sites:
+#   - domain: example.com
+#     aliases: [www.example.com]           # optional
+#     root: /var/www/example.com           # file_server
+#     # reverse_proxy: 127.0.0.1:8080      # or reverse_proxy instead of root
+#     encode: true                         # optional, default true (gzip, zstd)
+#     log_format: json                     # optional, default caddy_log_format
+#     extra_config: |                      # optional, raw Caddyfile lines
+#       header X-Frame-Options DENY
+#     basic_auth:                          # optional
+#       path: /admin/*                     # optional, default whole site
+#       realm: Restricted                  # optional
+#       users:
+#         - name: "{{ vault_site_user }}"          # ansible-vault encrypted
+#           password: "{{ vault_site_password }}"  # plaintext, hashed with bcrypt
+#         # or a ready hash from `caddy hash-password`:
+#         # - name: bob
+#         #   password_hash: "$2a$14$..."
+#   - domain: old.example.com
+#     state: absent                        # removes config (log file is kept)
+caddy_sites: []

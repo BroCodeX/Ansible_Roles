@@ -1,0 +1,70 @@
+---
+- name: Create conf.d directory
+  ansible.builtin.file:
+    path: "{{ caddy_conf_d_dir }}"
+    state: directory
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: "0750"
+
+- name: Deploy main Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: "{{ caddy_main_config }}"
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: "0640"
+    backup: true
+  notify: Reload caddy
+
+- name: Create site log files
+  ansible.builtin.file:
+    path: "{{ caddy_log_dir }}/{{ item.domain }}.log"
+    state: touch
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: "{{ caddy_log_mode }}"
+    access_time: preserve
+    modification_time: preserve
+  loop: "{{ caddy_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  when: item.state | default('present') != 'absent'
+
+- name: Deploy site configs
+  ansible.builtin.template:
+    src: site.caddy.j2
+    dest: "{{ caddy_conf_d_dir }}/{{ item.domain }}.caddy"
+    owner: root
+    group: "{{ caddy_group }}"
+    mode: "0640"
+  loop: "{{ caddy_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  when: item.state | default('present') != 'absent'
+  no_log: true
+  notify: Reload caddy
+
+- name: Remove absent site configs
+  ansible.builtin.file:
+    path: "{{ caddy_conf_d_dir }}/{{ item.domain }}.caddy"
+    state: absent
+  loop: "{{ caddy_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  when: item.state | default('present') == 'absent'
+  notify: Reload caddy
+
+- name: Validate Caddy configuration
+  ansible.builtin.command:
+    cmd: caddy validate --config {{ caddy_main_config }} --adapter caddyfile
+  become_user: "{{ caddy_user }}"
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Enable and start Caddy
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: "{{ caddy_service_enabled }}"
+    state: "{{ 'started' if caddy_service_enabled else 'stopped' }}"
+  when: not ansible_check_mode

@@ -1,0 +1,16 @@
+---
+# https://caddyserver.com/docs/install#fedora-redhat-centos
+- name: Install dnf copr plugin
+  ansible.builtin.dnf:
+    name: dnf-plugins-core
+    state: present
+
+- name: Enable Caddy COPR repository
+  ansible.builtin.command:
+    cmd: dnf copr enable -y @caddy/caddy
+    creates: /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:group_caddy:caddy.repo
+
+- name: Install Caddy
+  ansible.builtin.dnf:
+    name: "{{ caddy_package }}"
+    state: "{{ caddy_package_state }}"
