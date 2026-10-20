@@ -43,3 +43,33 @@
   loop_control:
     label: "{{ item.key }}"
   with_dict: "{{ elasticsearch_native_user_passwords }}"
+
+- name: users | Create custom roles
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/_security/role/{{ item.key }}
+    method: PUT
+    body_format: json
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    body: "{{ item.value }}"
+  loop_control:
+    label: "{{ item.key }}"
+  with_dict: "{{ elasticsearch_custom_roles }}"
+
+- name: users | Create custom users
+  uri:
+    url: http://{{ elasticsearch_network_publish_host }}:9200/_security/user/{{ item.key }}
+    method: PUT
+    body_format: json
+    user: "elastic"
+    password: "{{ elasticsearch_native_user_passwords.elastic.password }}"
+    force_basic_auth: yes
+    body:
+      password: "{{ item.value.password }}"
+      roles: "{{ item.value.roles }}"
+      full_name: "{{ item.value.full_name | default(item.key) }}"
+  no_log: true
+  loop_control:
+    label: "{{ item.key }}"
+  with_dict: "{{ elasticsearch_custom_users }}"

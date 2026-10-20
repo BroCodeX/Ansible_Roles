@@ -21,7 +21,7 @@ http.port: {{ elasticsearch_http_port }}
 discovery.seed_hosts: [{% for host in elasticsearch_inventory_hosts %}"{{ hostvars[host]['ansible_default_ipv4']['address'] }}",{% endfor %}]
 cluster.initial_master_nodes:
 {% for host in elasticsearch_inventory_hosts %}
-  - {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+  - {{ hostvars[host]['elasticsearch_node_name'] | default(host) }}
 {% endfor %}
 
 cluster.publish.timeout: {{ elasticsearch_cluster_publish_timeout }}

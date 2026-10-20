@@ -7,7 +7,7 @@
 
 - name: install | Add Elasticsearch key
   apt_key:
-    url: "{{ elasticsearch_repo_key }}"
+    data: "{{ lookup('file', elasticsearch_repo_key_file) }}"
     state: present
 
 - name: install | Add Elasticsearch repo

@@ -2,8 +2,10 @@
 # elasticsearch repo
 elasticsearch_version: 8.6.2
 elasticsearch_major_version: "{{ elasticsearch_version.split('.')[0] }}"
-elasticsearch_repo_key: https://artifacts.elastic.co/GPG-KEY-elasticsearch
-elasticsearch_repo: deb https://artifacts.elastic.co/packages/{{ elasticsearch_major_version }}.x/apt stable main
+elasticsearch_repo_url: https://artifacts.elastic.co/packages/{{ elasticsearch_major_version }}.x/apt
+# key is shipped with the role (files/GPG-KEY-elasticsearch, fingerprint 46095ACC8548582C1A2699A9D27D666CD88E42B4)
+elasticsearch_repo_key_file: GPG-KEY-elasticsearch
+elasticsearch_repo: deb {{ elasticsearch_repo_url }} stable main
 # elasticsearch node settings
 elasticsearch_heap_size: 512m
 elasticsearch_path_data:
@@ -52,6 +54,17 @@ elasticsearch_native_user_passwords:
     password: override
   remote_monitoring_user:
     password: override
+# custom roles and users (created via API with the elastic user)
+elasticsearch_custom_roles: {}
+  # role_name:
+  #   indices:
+  #     - names: ["logs-*"]
+  #       privileges: [create_index, create, index, auto_configure]
+elasticsearch_custom_users: {}
+  # user_name:
+  #   password: override
+  #   roles: [superuser]
+  #   full_name: Some User
 # ilm
 elasticsearch_number_of_replicas: "{{ elasticsearch_inventory_hosts | length - 1 }}"
 elasticsearch_ilm: {}
