@@ -42,6 +42,7 @@
   loop_control:
     label: "{{ item.domain }}"
   when: item.state | default('present') != 'absent'
+  register: caddy_site_files
   no_log: true
   notify: Reload caddy
 
@@ -55,10 +56,29 @@
   when: item.state | default('present') == 'absent'
   notify: Reload caddy
 
+- name: Check formatting of Caddy configs
+  ansible.builtin.command:
+    cmd: caddy fmt --diff {{ item }}
+  loop: "{{ [caddy_main_config] + (caddy_site_files.results | selectattr('dest', 'defined') | map(attribute='dest') | list) }}"
+  register: caddy_fmt_check
+  changed_when: false
+  failed_when: caddy_fmt_check.rc not in [0, 1]
+  check_mode: false
+
+- name: Format Caddy configs
+  ansible.builtin.command:
+    cmd: caddy fmt --overwrite {{ item.item }}
+  loop: "{{ caddy_fmt_check.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - not ansible_check_mode
+    - item.rc == 1
+  notify: Reload caddy
+
 - name: Validate Caddy configuration
   ansible.builtin.command:
     cmd: caddy validate --config {{ caddy_main_config }} --adapter caddyfile
-  become_user: "{{ caddy_user }}"
   changed_when: false
   when: not ansible_check_mode
 
