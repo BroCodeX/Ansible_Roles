@@ -1,0 +1,74 @@
+---
+# ── Debian / Ubuntu ──────────────────────────────────────────────────────────
+
+# APT::Periodic::* — периодические задачи (ключи 1:1 с директивами)
+apt_periodic:
+  Update-Package-Lists: "1"
+  Download-Upgradeable-Packages: "1"
+  AutocleanInterval: "7"
+  Unattended-Upgrade: "1"
+
+# APT::Archives::* — управление кэшем пакетов (пусто = секция не рендерится)
+apt_archives: {}
+# apt_archives:
+#   MaxAge: "30"
+#   MinAge: "2"
+#   MaxSize: "500"
+
+# APT::Update::Post-Invoke-Success — хуки после успешного apt update
+apt_update_post_invoke_success: []
+# apt_update_post_invoke_success:
+#   - "touch /var/lib/apt/periodic/update-success-stamp 2>/dev/null || true"
+
+# APT::Update::Pre-Invoke — хуки перед apt update
+apt_update_pre_invoke: []
+
+# ── AlmaLinux / RHEL ─────────────────────────────────────────────────────────
+
+# [commands] — что делать с обновлениями
+dnf_automatic_commands:
+  upgrade_type: security      # security | default (все пакеты)
+  download_updates: yes
+  apply_updates: yes
+  random_sleep: 0             # секунды случайной задержки
+  reboot: never               # never | when-changed | always
+  # reboot_command: "shutdown -r +5 'Rebooting after package updates'"
+
+# [emitters] — куда отправлять отчёт (пусто = секция не рендерится)
+dnf_automatic_emitters:
+  emit_via: stdio             # stdio | email | command | command_email | motd
+  output_width: 80
+  # system_name: myhostname
+
+# [email] — уведомления по email
+dnf_automatic_email: {}
+# dnf_automatic_email:
+#   email_from: root@localhost
+#   email_to: root
+#   email_host: localhost
+
+# [command] — произвольная команда как emitter
+dnf_automatic_command: {}
+# dnf_automatic_command:
+#   command_format: "cat"
+#   stdin_format: "{body}"
+
+# [command_email] — команда + email в одном emitter
+dnf_automatic_command_email: {}
+# dnf_automatic_command_email:
+#   email_from: root@localhost
+#   email_to: root
+#   email_host: localhost
+#   command_format: "mail -Ssendwait -s {subject} -r {email_from} {email_to}"
+#   stdin_format: "{body}"
+
+# [base] — точечное переопределение ключей из /etc/dnf/dnf.conf [main]
+# Ключи те же что в dnf.conf. Указывай только то, что хочешь изменить для automatic.
+dnf_automatic_base: {}
+# dnf_automatic_base:
+#   gpgcheck: 1
+#   installonly_limit: 3
+#   clean_requirements_on_remove: True
+#   best: True
+#   skip_if_unavailable: False
+#   debuglevel: 1

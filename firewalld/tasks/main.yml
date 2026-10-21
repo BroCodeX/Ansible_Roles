@@ -1,0 +1,178 @@
+---
+- name: Install firewalld on Debian
+  ansible.builtin.apt:
+    name: firewalld
+    state: present
+    update_cache: yes
+  when:
+    - ansible_facts['os_family'] == "Debian"
+    - not ansible_check_mode
+
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Include vars
+  ansible.builtin.include_vars:
+    file: "{{ item }}"
+  loop: "{{ var_files }}"
+  tags: check_unmanaged
+
+- name: Template firewalld.conf config
+  ansible.builtin.template:
+    src: firewalld.conf.j2
+    dest: "{{ firewalld_config_dir }}/firewalld.conf"
+    group: root
+    owner: root
+    mode: 0644
+  notify:
+    - Firewalld reload
+
+- name: Clear all zones and ipsets config
+  when: firewalld_clear_all_zones | bool
+  block:
+
+    - name: Remove all files with zones and ipsets
+      ansible.builtin.file:
+        path: "/etc/firewalld/{{ item }}"
+        state: absent
+      loop:
+        - zones
+        - ipsets
+
+    - name: Reload firewalld after clear zones and ipsets
+      ansible.builtin.systemd:
+        state: reloaded
+        name: firewalld
+      when:
+        - "'firewalld.service' in ansible_facts.services"
+
+- name: Adding new additional zones
+  when: firewalld_additional_zones
+  block:
+
+    - name: Add new zone
+      ansible.posix.firewalld:
+        zone: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        permanent: true
+      loop: "{{ firewalld_additional_zones }}"
+      register: new_zone
+
+    - name: Reload firewalld after adding new zone
+      ansible.builtin.systemd:
+        state: reloaded
+        name: firewalld
+      when:
+        - new_zone.changed
+        - "'firewalld.service' in ansible_facts.services"
+
+
+- name: Adding ipsets
+  when: firewalld_adding_ipsets | bool
+  block:
+
+    - name: Make dir for ipsets
+      ansible.builtin.file:
+        path: /etc/firewalld/ipsets
+        state: directory
+
+    - name: Template ipsets config
+      ansible.builtin.template:
+        src: ipset.xml.j2
+        dest: "{{ firewalld_config_dir }}/ipsets/group_{{ item }}.xml"
+        group: root
+        owner: root
+        mode: 0644
+      loop: "{{ groups.keys() | reject('search', 'ungrouped') | list }}"
+      register: new_ipset
+
+    - name: Template custom ipsets
+      ansible.builtin.template:
+        src: custom_ipset.xml.j2
+        dest: "{{ firewalld_config_dir }}/ipsets/{{ item }}.xml"
+        group: root
+        owner: root
+        mode: 0644
+      loop: "{{ firewalld_adding_custom_ipsets_list }}"
+      when: firewalld_adding_custom_ipsets
+      register: new_custom_ipset
+
+    - name: Reload firewalld after adding ipsets
+      ansible.builtin.systemd:
+        state: reloaded
+        name: firewalld
+      when:
+        - new_ipset.changed or new_custom_ipset.changed
+        - "'firewalld.service' in ansible_facts.services"
+
+- name: Configuration white list for firewalld
+  ansible.posix.firewalld:
+    permanent: "{{ item.permanent | default(true) }}"
+    source: "{{ item.source | default(omit) }}"
+    state: "{{ item.state | default(omit) }}"
+    zone: trusted
+  loop: "{{ firewalld_configuration_whitelist }}"
+  notify:
+    - Firewalld reload
+  when:
+    - "'firewalld.service' in ansible_facts.services"
+
+- name: Trigger firewalld reload
+  meta: flush_handlers
+
+- name: Configuration firewalld temporarily
+  ansible.posix.firewalld:
+    icmp_block: "{{ item.icmp_block | default(omit) }}"
+    icmp_block_inversion: "{{ item.icmp_block_inversion | default(omit) }}"
+    immediate: "{{ item.immediate | default(omit) }}"
+    interface: "{{ item.interface | default(omit) }}"
+    masquerade: "{{ item.masquerade | default(omit) }}"
+    permanent: false
+    port: "{{ item.port | default(omit) }}"
+    port_forward: "{{ item.port_forward | default(omit) }}"
+    rich_rule: "{{ item.rich_rule | default(omit) }}"
+    service: "{{ item.service | default(omit) }}"
+    source: "{{ item.source | default(omit) }}"
+    state: "{{ item.state | default(omit) }}"
+    target: "{{ item.target | default(omit) }}"
+    zone: "{{ item.zone | default(omit) }}"
+    timeout: 1
+  loop: "{{ firewalld_configuration }}"
+  notify:
+    - Firewalld reload
+  when:
+    - "'firewalld.service' in ansible_facts.services"
+
+- name: Trigger firewalld reload
+  meta: flush_handlers
+
+- name: "Check firewalld.service status"
+  ansible.builtin.systemd:
+    name: firewalld
+  register: firewalld_service
+
+- name: Configuration firewalld
+  ansible.posix.firewalld:
+    icmp_block: "{{ item.icmp_block | default(omit) }}"
+    icmp_block_inversion: "{{ item.icmp_block_inversion | default(omit) }}"
+    immediate: "{{ item.immediate | default(omit) }}"
+    interface: "{{ item.interface | default(omit) }}"
+    masquerade: "{{ item.masquerade | default(omit) }}"
+    permanent: "{{ item.permanent | default(true) }}"
+    port: "{{ item.port | default(omit) }}"
+    port_forward: "{{ item.port_forward | default(omit) }}"
+    rich_rule: "{{ item.rich_rule | default(omit) }}"
+    service: "{{ item.service | default(omit) }}"
+    source: "{{ item.source | default(omit) }}"
+    state: "{{ item.state | default(omit) }}"
+    target: "{{ item.target | default(omit) }}"
+    zone: "{{ item.zone | default(omit) }}"
+  loop: "{{ firewalld_configuration }}"
+  when: firewalld_service.status.ActiveState == "active"
+  notify:
+    - Firewalld reload
+
+- name: Check unmanaged objects
+  ansible.builtin.import_tasks: check_unmanaged.yml
+  when: check_unmanaged | default(false)
+  tags: check_unmanaged

@@ -1,0 +1,55 @@
+---
+audit_rules_dir: /etc/audit/rules.d
+
+# Each entry produces one file in audit_rules_dir.
+# Use one entry to put all rules in a single file,
+# or multiple entries to split rules across separate files.
+#
+# Example — split by category:
+#   audit_rule_files:
+#     - filename: identity.rules
+#       rules:
+#         - '-w /etc/passwd -p wa -k identity'
+#     - filename: sudo.rules
+#       rules:
+#         - '-w /etc/sudoers -p wa -k sudoers'
+
+audit_rule_files:
+  - filename: hardening.rules
+    rules:
+      # Identity files
+      - '-w /etc/passwd -p wa -k identity'
+      - '-w /etc/shadow -p wa -k identity'
+      - '-w /etc/group -p wa -k identity'
+      # Sudo
+      - '-w /etc/sudoers -p wa -k sudoers'
+      - '-w /etc/sudoers.d -p wa -k sudoers'
+      # SSH
+      - '-w /etc/ssh/sshd_config -p wa -k sshd_config'
+      - '-w /root/.ssh -p wa -k root_ssh'
+      # Privilege escalation (setuid/setgid)
+      - '-a always,exit -F arch=b64 -S setuid,setgid -F key=setuid'
+      - '-a always,exit -F arch=b32 -S setuid,setgid -F key=setuid'
+      # Access denied (open/openat → EACCES)
+      - '-a always,exit -F arch=b64 -S open,openat -F exit=-EACCES -F key=access_denied'
+      - '-a always,exit -F arch=b32 -S open,openat -F exit=-EACCES -F key=access_denied'
+  # Paths match current docker-ce / containerd.io packages on usrmerged systems.
+  # audit does not follow symlinks, so use real paths (/run, /usr/lib), not /var/run or /lib.
+  - filename: docker.rules
+    rules:
+      # Daemon and runtime binaries
+      - '-w /usr/bin/dockerd -p rwxa -k docker'
+      - '-w /usr/bin/containerd -p rwxa -k docker'
+      - '-w /usr/bin/runc -p rwxa -k docker'
+      # Sockets and state
+      - '-w /run/docker.sock -p wa -k docker'
+      - '-w /run/containerd -p rwxa -k docker'
+      - '-w /var/lib/docker -p rwxa -k docker'
+      # Configuration
+      - '-w /etc/docker -p rwxa -k docker'
+      - '-w /etc/docker/daemon.json -p rwxa -k docker'
+      - '-w /etc/containerd/config.toml -p rwxa -k docker'
+      # systemd units
+      - '-w /usr/lib/systemd/system/docker.service -p rwxa -k docker'
+      - '-w /usr/lib/systemd/system/docker.socket -p rwxa -k docker'
+      - '-w /usr/lib/systemd/system/containerd.service -p rwxa -k docker'

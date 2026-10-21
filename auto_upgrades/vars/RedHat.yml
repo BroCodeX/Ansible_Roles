@@ -1,0 +1,4 @@
+---
+dnf_automatic_conf: /etc/dnf/automatic.conf
+autoupgrade_package: dnf-automatic
+autoupgrade_service: dnf-automatic.timer

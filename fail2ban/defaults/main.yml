@@ -1,0 +1,49 @@
+---
+# Список jail-ов. Каждый item — отдельный файл в /etc/fail2ban/jail.d/<name>.local
+# Ключи внутри options соответствуют директивам fail2ban 1:1 — добавляй любые.
+#
+# Пример расширенной конфигурации:
+# fail2ban_jails:
+#   - name: sshd
+#     options:
+#       enabled: true
+#       port: 22
+#       filter: sshd
+#       backend: systemd
+#       maxretry: 3
+#       findtime: 5m
+#       bantime: 1h
+#   - name: nginx-http-auth
+#     options:
+#       enabled: true
+#       port: http,https
+#       filter: nginx-http-auth
+#       logpath: /var/log/nginx/error.log
+#       maxretry: 5
+#       bantime: 10m
+
+fail2ban_jails:
+  - name: sshd
+    options:
+      enabled: true
+      port: 22
+      filter: sshd
+      backend: systemd
+      maxretry: 3
+      findtime: 5m
+      bantime: 1h
+
+# Кастомные фильтры. Каждый item — отдельный файл /etc/fail2ban/filter.d/<name>.conf
+# Ключи внутри definition соответствуют директивам секции [Definition] фильтра fail2ban.
+# Значение ключа может быть строкой или списком строк (для многострочного failregex).
+#
+# Пример:
+# fail2ban_filters:
+#   - name: custom-app
+#     definition:
+#       failregex:
+#         - ^<HOST> - Failed login for .*$
+#         - ^<HOST> - Blocked suspicious request .*$
+#       ignoreregex: ''
+
+fail2ban_filters: []

@@ -1,0 +1,6 @@
+---
+iptables_packages: [iptables, iptables-persistent, netfilter-persistent]
+iptables_services: [netfilter-persistent]
+iptables_rules_v4_path: /etc/iptables/rules.v4
+iptables_rules_v6_path: /etc/iptables/rules.v6
+iptables_conflicting_services: [nftables, ufw, firewalld]

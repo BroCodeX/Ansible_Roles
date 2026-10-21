@@ -1,0 +1,16 @@
+---
+- name: run augenrules
+  ansible.builtin.command: augenrules --load
+  changed_when: true
+  listen: reload auditd rules
+
+- name: restart auditd
+  ansible.builtin.service:
+    name: auditd
+    state: restarted
+  register: auditd_restart
+  # In check mode the package is only simulated, so the unit may not exist yet
+  failed_when:
+    - auditd_restart is failed
+    - not (ansible_check_mode and 'Could not find the requested service' in auditd_restart.msg | default(''))
+  listen: reload auditd rules

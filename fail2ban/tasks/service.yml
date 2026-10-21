@@ -1,0 +1,11 @@
+---
+- name: Enable and start fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  register: fail2ban_service
+  # In check mode the package is only simulated, so the unit may not exist yet
+  failed_when:
+    - fail2ban_service is failed
+    - not (ansible_check_mode and 'Could not find the requested service' in fail2ban_service.msg | default(''))

@@ -1,0 +1,7 @@
+---
+- name: Set password policy
+  ansible.builtin.lineinfile:
+    path: "{{ login_defs_path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop: "{{ password_policy }}"

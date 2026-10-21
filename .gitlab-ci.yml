@@ -1,0 +1,114 @@
+spec:
+  inputs:
+    playbook:
+      description: "Select playbook to run"
+      type: string
+      options:
+        - nginx
+        - prometheus
+        - filebeat
+      default: "nginx"
+    limit:
+      description: "Limit to host or group names (comma separated)"
+      type: string
+      default: "nginx_hosts"
+    tags:
+      description: "Tags names (comma separated)"
+      type: string
+      default: "nginx"
+    extra_args:
+      description: "Extra args ansible-playbook"
+      type: string
+      default: ""
+    has_vault:
+      description: "Use --vault-password-file"
+      type: boolean
+      default: false
+---
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+stages:
+  - check
+  - deploy
+
+.common_tags:  
+  tags:
+    - dev2
+
+variables:
+  INVENTORY: "inventory/hosts.yml"
+  ANSIBLE_FORCE_COLOR: "true"
+
+.before_script_ansible:
+  - eval $(ssh-agent -s)
+  - chmod 400 "$ANSIBLE_SSH_PRIVATE_KEY"
+  - cat "$ANSIBLE_SSH_PRIVATE_KEY" | base64 -d | ssh-add -
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - cat "$SSH_KNOWN_HOSTS" | base64 -d > ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+
+# =====
+# Check diff playbook
+# =====
+"$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - check":
+  image: $CI_REGISTRY/project/infra/docker-images/ansible:latest
+  extends:
+    - .common_tags
+  stage: check
+  needs: []
+  before_script:
+    - !reference [.before_script_ansible]
+  variables:
+    ANSIBLE_ARGS: &ansible_args |
+      --inventory $INVENTORY
+      --limit $[[ inputs.limit ]]
+      --tags $[[ inputs.tags ]]
+      --user ansible
+      $[[ inputs.extra_args ]]
+  script:
+    - if $[[ inputs.has_vault ]]; then ANSIBLE_ARGS="$ANSIBLE_ARGS --vault-password-file ${ANSIBLE_VAULT_PASSWORD_FILE}"; fi
+    - echo ${ANSIBLE_ARGS}
+    - ansible-playbook ${ANSIBLE_ARGS} $[[ inputs.playbook ]].yml -C -D --become
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "master"
+      changes:
+        - roles/firewalld/files/custom_ipset_binom_blacklist
+      when: on_success
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+
+# =====
+# Deploy playbook
+# =====
+"$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - deploy":
+  image: $CI_REGISTRY/project/infra/docker-images/ansible:latest
+  extends:
+    - .common_tags
+  stage: deploy
+  before_script:
+    - !reference [.before_script_ansible]
+  variables:
+    ANSIBLE_ARGS: *ansible_args
+  script:
+    - if $[[ inputs.has_vault ]]; then ANSIBLE_ARGS="$ANSIBLE_ARGS --vault-password-file ${ANSIBLE_VAULT_PASSWORD_FILE}"; fi
+    - echo ${ANSIBLE_ARGS}
+    - ansible-playbook ${ANSIBLE_ARGS} $[[ inputs.playbook ]].yml -D --become
+  needs:
+    - "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - check"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      changes:
+        - roles/firewalld/files/custom_ipset_binom_blacklist
+      when: on_success
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual

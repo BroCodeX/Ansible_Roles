@@ -1,0 +1,12 @@
+---
+- name: Load OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+
+- name: Backup system files
+  ansible.builtin.import_tasks: backup.yml
+
+- name: Login.defs hardening
+  ansible.builtin.import_tasks: login_defs.yml
+
+- name: Pwquality hardening
+  ansible.builtin.import_tasks: pwquality.yml

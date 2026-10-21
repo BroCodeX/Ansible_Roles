@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  role_name: logrotate
+  description: Deploy logrotate configs and optional hourly cron
+  min_ansible_version: "2.12"
+dependencies: []

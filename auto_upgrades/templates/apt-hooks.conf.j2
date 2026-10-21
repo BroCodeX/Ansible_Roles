@@ -1,0 +1,15 @@
+// Managed by Ansible — do not edit manually.
+{% if apt_update_post_invoke_success %}
+APT::Update::Post-Invoke-Success {
+{% for cmd in apt_update_post_invoke_success %}
+    "{{ cmd }}";
+{% endfor %}
+};
+{% endif %}
+{% if apt_update_pre_invoke %}
+APT::Update::Pre-Invoke {
+{% for cmd in apt_update_pre_invoke %}
+    "{{ cmd }}";
+{% endfor %}
+};
+{% endif %}

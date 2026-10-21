@@ -1,0 +1,13 @@
+---
+- name: Install pwquality package
+  ansible.builtin.package:
+    name: "{{ pwquality_package }}"
+    state: present
+
+- name: Deploy pwquality config
+  ansible.builtin.template:
+    src: pwquality.conf.j2
+    dest: "{{ pwquality_conf_path }}"
+    owner: root
+    group: root
+    mode: '0644'

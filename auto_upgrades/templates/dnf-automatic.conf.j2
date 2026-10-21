@@ -1,0 +1,43 @@
+# Managed by Ansible — do not edit manually.
+
+{% if dnf_automatic_commands %}
+[commands]
+{% for key, value in dnf_automatic_commands.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+{% endif %}
+{% if dnf_automatic_emitters %}
+[emitters]
+{% for key, value in dnf_automatic_emitters.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+{% endif %}
+{% if dnf_automatic_email %}
+[email]
+{% for key, value in dnf_automatic_email.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+{% endif %}
+{% if dnf_automatic_command %}
+[command]
+{% for key, value in dnf_automatic_command.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+{% endif %}
+{% if dnf_automatic_command_email %}
+[command_email]
+{% for key, value in dnf_automatic_command_email.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+{% endif %}
+{% if dnf_automatic_base %}
+[base]
+{% for key, value in dnf_automatic_base.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+{% endif %}

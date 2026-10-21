@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  role_name: network_hardening
+  description: Deploy iptables rules (netfilter-persistent) and sysctl kernel/network hardening
+  min_ansible_version: "2.12"
+dependencies: []

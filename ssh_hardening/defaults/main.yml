@@ -1,0 +1,23 @@
+---
+ssh_port: 22
+ssh_config_path: /etc/ssh/sshd_config
+backup_dir: /var/backups/hardening
+
+ssh_settings:
+  - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+  - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+  - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+  - { regexp: '^#?MaxSessions', line: 'MaxSessions 2' }
+  - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+  - { regexp: '^#?KbdInteractiveAuthentication', line: 'KbdInteractiveAuthentication no' }
+  - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+  - { regexp: '^#?LogLevel', line: 'LogLevel VERBOSE' }
+  - { regexp: '^#?LoginGraceTime', line: 'LoginGraceTime 30' }
+  - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+  - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+  - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+  - { regexp: '^#?AllowTcpForwarding', line: 'AllowTcpForwarding no' }
+  - { regexp: '^#?AllowAgentForwarding', line: 'AllowAgentForwarding no' }
+  - { regexp: '^#?PermitTunnel', line: 'PermitTunnel no' }
+  - { regexp: '^#?PrintMotd', line: 'PrintMotd no' }
+  - { regexp: '^#?MaxStartups', line: 'MaxStartups 10:30:60' }

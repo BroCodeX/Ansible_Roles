@@ -1,0 +1,14 @@
+galaxy_info:
+  role_name: firewalld
+  namespace: firewalld
+  author: ITS Staff
+  description: Firewalld role
+  company: ITSumma
+  license: MIT
+  min_ansible_version: 2.1
+  platforms:
+    - name: Centos
+      versions:
+        - all
+
+dependencies: []

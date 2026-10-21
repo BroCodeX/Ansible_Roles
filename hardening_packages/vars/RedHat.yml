@@ -1,0 +1,7 @@
+---
+hardening_packages:
+  - audit
+  - fail2ban
+  - lynis
+  - dnf-automatic
+  - rsyslog

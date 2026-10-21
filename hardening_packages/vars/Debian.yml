@@ -1,0 +1,8 @@
+---
+hardening_packages:
+  - auditd
+  - rsyslog
+  - apparmor
+  - fail2ban
+  - lynis
+  - unattended-upgrades

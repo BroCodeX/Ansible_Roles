@@ -1,0 +1,46 @@
+---
+firewalld_enabled: true
+
+# Firewalld config /etc/firewalld/firewalld.conf
+firewalld_config_dir: /etc/firewalld
+firewalld_config_defaultzone: public
+firewalld_config_minimalmark: 100
+firewalld_config_cleanuponexit: "yes"
+firewalld_config_lockdown: "no"
+firewalld_config_ipv6_rpfilter: "yes"
+firewalld_config_individualcalls: "no"
+firewalld_config_logdenied: "off"
+firewalld_config_automatichelpers: system
+firewalld_config_allowzonedrifting: "yes"
+
+firewalld_clear_all_zones: false
+
+# List additional zones
+firewalld_additional_zones: []
+#  - name: new_zone_1
+#    state: present
+#  - name: new_zone_2
+#    state: absent
+
+firewalld_configuration_whitelist: []
+#  - source: 1.1.1.1
+#    state: enabled
+#  - source: 2.2.2.2
+#    state: enabled
+
+# Firewalld main zone configuration
+firewalld_configuration: []
+#  - port: 1234/tcp
+#    state: enabled
+#  - rich_rule: 'rule family=ipv4 source address="10.0.0.1" port port=1234 protocol="tcp" accept'
+#    state: enabled
+#  - interface: enp0s3
+#    zone: new_zone_1
+#    state: enabled
+#  - zone: new_zone_1
+#    target: ACCEPT
+#    state: enabled
+
+firewalld_adding_ipsets: true
+firewalld_adding_custom_ipsets: false
+firewalld_adding_custom_ipsets_list: []

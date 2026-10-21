@@ -1,0 +1,8 @@
+---
+# netfilter-persistent is not packaged for EL; iptables-services is the
+# equivalent persistence layer (iptables.service / ip6tables.service).
+iptables_packages: [iptables-nft, iptables-services]
+iptables_services: [iptables, ip6tables]
+iptables_rules_v4_path: /etc/sysconfig/iptables
+iptables_rules_v6_path: /etc/sysconfig/ip6tables
+iptables_conflicting_services: [nftables, firewalld]

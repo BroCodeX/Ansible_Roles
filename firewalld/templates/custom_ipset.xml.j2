@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ipset type="hash:net">
+{% set addresses = lookup('ansible.builtin.file', '{{ item }}') | split | cidr_merge %}
+{% for ip in addresses %}
+    <entry>{{ ip }}</entry>
+{% endfor %}
+</ipset>

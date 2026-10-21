@@ -1,0 +1,29 @@
+---
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Backup system files
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "{{ backup_dir }}/{{ item.path | basename }}.{{ ansible_facts['date_time']['date'] }}"
+    remote_src: yes
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+    force: no
+  loop: "{{ system_files }}"
+  # backup_dir is not really created in check mode, so the copy would fail
+  when: not ansible_check_mode
+
+- name: Fix system file permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ system_files }}"

@@ -1,0 +1,63 @@
+---
+- name: Load OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_facts['pkg_mgr'] == 'apt'
+
+- name: Install auto-upgrade package
+  ansible.builtin.package:
+    name: "{{ autoupgrade_package }}"
+    state: present
+
+# ── Debian / Ubuntu ──────────────────────────────────────────────────────────
+- name: Deploy APT periodic config
+  ansible.builtin.template:
+    src: apt-periodic.conf.j2
+    dest: "{{ apt_periodic_conf }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_facts['pkg_mgr'] == 'apt' and apt_periodic | length > 0
+
+- name: Deploy APT archives config
+  ansible.builtin.template:
+    src: apt-archives.conf.j2
+    dest: "{{ apt_archives_conf }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_facts['pkg_mgr'] == 'apt' and apt_archives | length > 0
+
+- name: Deploy APT update hooks config
+  ansible.builtin.template:
+    src: apt-hooks.conf.j2
+    dest: "{{ apt_hooks_conf }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_facts['pkg_mgr'] == 'apt' and (apt_update_post_invoke_success | length > 0 or apt_update_pre_invoke | length > 0)
+
+# ── AlmaLinux / RHEL ─────────────────────────────────────────────────────────
+- name: Deploy dnf-automatic config
+  ansible.builtin.template:
+    src: dnf-automatic.conf.j2
+    dest: "{{ dnf_automatic_conf }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_facts['pkg_mgr'] == 'dnf'
+
+- name: Enable auto-upgrade service
+  ansible.builtin.service:
+    name: "{{ autoupgrade_service }}"
+    state: started
+    enabled: yes
+  register: autoupgrade_service_result
+  # In check mode the package is only simulated, so the unit may not exist yet
+  failed_when:
+    - autoupgrade_service_result is failed
+    - not (ansible_check_mode and 'Could not find the requested service' in autoupgrade_service_result.msg | default(''))

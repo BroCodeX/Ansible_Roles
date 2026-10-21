@@ -1,0 +1,12 @@
+---
+- name: Deploy audit rule files
+  ansible.builtin.template:
+    src: audit.rules.j2
+    dest: "{{ audit_rules_dir }}/{{ item.filename }}"
+    owner: root
+    group: root
+    mode: '0640'
+  loop: "{{ audit_rule_files }}"
+  loop_control:
+    label: "{{ item.filename }}"
+  notify: reload auditd rules

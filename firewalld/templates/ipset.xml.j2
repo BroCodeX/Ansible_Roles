@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ipset type="hash:net">
+{% for host in groups[item] %}
+  <entry>{{ hostvars[host].ansible_host }}</entry>
+{% endfor %}
+{% for host in groups[item] %}
+{% if hostvars[host].ansible_host_local_ips is defined %}
+{% for ip in hostvars[host].ansible_host_local_ips %}
+  <entry>{{ ip }}</entry>
+{% endfor %}
+{% else %}
+{% endif %}
+{% endfor %}
+</ipset>

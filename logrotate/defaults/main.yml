@@ -1,0 +1,16 @@
+---
+# logrotate_config example:
+# - name: myapp
+#   path: /var/log/myapp/*.log
+#   rotate: 14
+#   frequency: daily        # daily / weekly / monthly
+#   compress: true
+#   delaycompress: true
+#   missingok: true
+#   notifempty: true
+#   sharedscripts: false
+#   create: "0640 root adm"
+#   postrotate: "systemctl reload myapp"
+logrotate_config: []
+
+logrotate_hourly_enabled: true

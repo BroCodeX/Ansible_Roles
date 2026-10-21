@@ -1,0 +1,26 @@
+---
+- name: Fail on unsupported OS family
+  ansible.builtin.fail:
+    msg: "Unsupported OS family: {{ ansible_facts['os_family'] }}. This role supports Debian and RedHat families only."
+  when: ansible_facts['os_family'] not in ['Debian', 'RedHat']
+
+- name: Install fail2ban (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install EPEL release (CentOS)
+  ansible.builtin.package:
+    name: epel-release
+    state: present
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution'] == 'CentOS'
+
+- name: Install fail2ban (RedHat/CentOS)
+  ansible.builtin.package:
+    name: fail2ban
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'

@@ -1,0 +1,16 @@
+---
+- name: validate fail2ban configuration
+  ansible.builtin.command: fail2ban-client -t
+  changed_when: false
+  listen: restart fail2ban
+  notify: restart fail2ban service
+
+- name: restart fail2ban service
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+  register: fail2ban_restart
+  # In check mode the package is only simulated, so the unit may not exist yet
+  failed_when:
+    - fail2ban_restart is failed
+    - not (ansible_check_mode and 'Could not find the requested service' in fail2ban_restart.msg | default(''))

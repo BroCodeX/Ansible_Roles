@@ -1,0 +1,5 @@
+# Managed by Ansible — do not edit manually.
+[{{ item.name }}]
+{% for key, value in item.options.items() %}
+{{ "%-12s" | format(key) }} = {{ value }}
+{% endfor %}

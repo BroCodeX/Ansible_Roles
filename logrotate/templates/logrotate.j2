@@ -1,0 +1,18 @@
+# Managed by Ansible
+{{ item.path }} {
+    rotate {{ item.rotate | default(7) }}
+    {{ item.frequency | default('daily') }}
+    {{ 'compress' if item.compress | default(true) else 'nocompress' }}
+    {{ 'delaycompress' if item.delaycompress | default(true) else '' }}
+    {{ 'missingok' if item.missingok | default(true) else '' }}
+    {{ 'notifempty' if item.notifempty | default(true) else '' }}
+    {{ 'sharedscripts' if item.sharedscripts | default(false) else '' }}
+{% if item.create is defined %}
+    create {{ item.create }}
+{% endif %}
+{% if item.postrotate is defined %}
+    postrotate
+        {{ item.postrotate }}
+    endscript
+{% endif %}
+}

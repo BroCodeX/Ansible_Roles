@@ -1,0 +1,8 @@
+---
+- name: Network hardening
+  ansible.builtin.import_tasks: iptables.yaml
+  tags: [iptables, network_hardening]
+
+- name: Sysctl hardening
+  ansible.builtin.import_tasks: sysctl.yaml
+  tags: [sysctl, network_hardening]

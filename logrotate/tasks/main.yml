@@ -1,0 +1,27 @@
+---
+- name: Ensure logrotate directory exists
+  ansible.builtin.file:
+    path: /etc/logrotate.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy logrotate configs
+  ansible.builtin.template:
+    src: logrotate.j2
+    dest: "/etc/logrotate.d/{{ item.name }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ logrotate_config }}"
+  when: logrotate_config | length > 0
+
+- name: Deploy hourly logrotate cron
+  ansible.builtin.template:
+    src: logrotate-cron.j2
+    dest: /etc/cron.hourly/logrotate
+    owner: root
+    group: root
+    mode: '0755'
+  when: logrotate_hourly_enabled | bool

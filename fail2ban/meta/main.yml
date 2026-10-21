@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  role_name: fail2ban
+  description: Installs fail2ban on Debian/CentOS and deploys jail and filter configuration
+  min_ansible_version: "2.12"
+dependencies: []

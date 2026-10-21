@@ -1,0 +1,98 @@
+- name: Check ansible running mode
+  ansible.builtin.assert:
+    that:
+      - ansible_check_mode
+    fail_msg: ⚠️ Ansible run in normal mode ⚠️
+    success_msg: ✅ Ansible run in check mode ✅
+  ignore_errors: true
+  run_once: true
+
+- name: "Check firewalld.service status"
+  ansible.builtin.systemd:
+    name: firewalld
+  register: firewalld_service
+
+- name: Get firewalld state
+  when: firewalld_service.status.ActiveState == "active"
+  block:
+  - name: Set list of managed zones
+    ansible.builtin.set_fact:
+      firewalld_managed_zones: "{{ firewalld_additional_zones + [firewalld_config_defaultzone] + ['trusted'] }}"
+
+  - name: Set managed rich rules
+    ansible.builtin.set_fact:
+      managed_rules: "{{ managed_rules | default([]) + [item.rich_rule] }}"
+    with_items: "{{ firewalld_configuration }}"
+    when:
+      - item.zone is not defined
+      - item.rich_rule is defined
+      - item.state == 'enabled'
+
+  - name: Set managed services (disabled)
+    ansible.builtin.set_fact:
+      managed_services_disabled: "{{ managed_services_enabled | default([]) + [item.service] }}"
+    with_items: "{{ firewalld_configuration }}"
+    when:
+      - item.zone is not defined
+      - item.service is defined
+      - item.state == 'disabled'
+
+  - name: Set managed trusted sources (enabled)
+    ansible.builtin.set_fact:
+      managed_trusted_sources: "{{ managed_trusted_sources | default([]) + [item.source] }}"
+    with_items: "{{ firewalld_configuration_whitelist }}"
+    when:
+      - item.state == 'enabled'
+
+  - name: Get firewalld info
+    ansible.posix.firewalld_info:
+      zones: "{{ firewalld_managed_zones }}"
+    register: results
+
+  - name: Check unmaneged configs
+    ansible.builtin.set_fact:
+      unmanaged_rich_rules: "{{ results.firewalld_info.zones[firewalld_config_defaultzone].rich_rules | ansible.builtin.difference(managed_rules | default([]))}}"
+      unmanaged_services_disabled: "{{ managed_services_disabled | default([]) | ansible.builtin.intersect(results.firewalld_info.zones[firewalld_config_defaultzone].services) }}"
+      unmanaged_trusted_sources: "{{ results.firewalld_info.zones.trusted.sources | ansible.builtin.difference(managed_trusted_sources | default([])) }}"
+
+- name: Print results
+  ansible.builtin.pause:
+    seconds: 1
+    prompt: |
+      {% for h in ansible_play_hosts %}
+
+      {%if hostvars[h].firewalld_enabled | default(true) %}
+      🌐 {{ h }}:
+      {%if hostvars[h].firewalld_service.status is defined %}
+      {%if hostvars[h].firewalld_service.status.ActiveState == "active" %}
+      {% if hostvars[h].unmanaged_rich_rules == [] %}
+        ✅ unmanaged rules: OK
+      {% else %}
+        ⚠️ unmanaged rules:
+      {% for rule in hostvars[h].unmanaged_rich_rules %}
+          {{ rule }}
+      {% endfor %}
+      {% endif %}
+      {% if hostvars[h].unmanaged_services_disabled == [] %}
+        ✅ unmanaged services: OK
+      {% else %}
+        ⚠️ unmanaged services:
+          active services, but should be disabled: {{ unmanaged_services_disabled }}
+      {% endif %}
+      {% if hostvars[h].unmanaged_trusted_sources == [] %}
+        ✅ unmanaged trusted sources: OK
+      {% else %}
+        ⚠️ unmanaged trusted sources:
+      {% for source in hostvars[h].unmanaged_trusted_sources %}
+          {{ source }}
+      {% endfor %}
+      {% endif %}
+      {% else %}
+        ❌ firewalld.service not active
+      {% endif %}
+      {% else %}
+        ❓ firewalld.service status unknown
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+  run_once: true

@@ -1,0 +1,7 @@
+---
+autoupgrade_package: unattended-upgrades
+autoupgrade_service: unattended-upgrades
+
+apt_periodic_conf: /etc/apt/apt.conf.d/90-ansible-periodic
+apt_archives_conf: /etc/apt/apt.conf.d/90-ansible-archives
+apt_hooks_conf: /etc/apt/apt.conf.d/90-ansible-update-hooks

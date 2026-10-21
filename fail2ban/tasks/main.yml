@@ -1,0 +1,12 @@
+---
+- name: Install fail2ban package
+  ansible.builtin.import_tasks: install.yml
+
+- name: Deploy fail2ban custom filters
+  ansible.builtin.import_tasks: filters.yml
+
+- name: Deploy fail2ban jail configs
+  ansible.builtin.import_tasks: jails.yml
+
+- name: Enable and start fail2ban service
+  ansible.builtin.import_tasks: service.yml

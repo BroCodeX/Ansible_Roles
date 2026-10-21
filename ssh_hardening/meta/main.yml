@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  role_name: ssh_hardening
+  description: SSH hardening — config, permissions, backup, validated restart
+  min_ansible_version: "2.12"
+dependencies: []

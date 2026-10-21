@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  role_name: password_policy
+  description: Password policy, system file permissions and backup
+  min_ansible_version: "2.12"
+dependencies: []

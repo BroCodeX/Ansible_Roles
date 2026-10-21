@@ -1,0 +1,39 @@
+---
+- name: Load OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Backup sshd_config
+  ansible.builtin.copy:
+    src: "{{ ssh_config_path }}"
+    dest: "{{ backup_dir }}/sshd_config.{{ ansible_facts['date_time']['date'] }}"
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0600'
+    force: no
+  # backup_dir is not really created in check mode, so the copy would fail
+  when: not ansible_check_mode
+
+- name: Fix sshd_config permissions
+  ansible.builtin.file:
+    path: "{{ ssh_config_path }}"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Configure SSH security settings
+  ansible.builtin.lineinfile:
+    path: "{{ ssh_config_path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: yes
+  loop: "{{ ssh_settings }}"
+  notify: validate and restart sshd

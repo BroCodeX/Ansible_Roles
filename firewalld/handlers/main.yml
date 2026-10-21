@@ -1,0 +1,12 @@
+---
+- name: "Firewalld check syntax"
+  ansible.builtin.command: firewall-cmd --check-config
+  register: check_result
+  listen: Firewalld reload
+
+- name: "Firewalld service reload"
+  ansible.builtin.systemd:
+    state: reloaded
+    name: firewalld
+  when: check_result.stdout == "success"
+  listen: Firewalld reload

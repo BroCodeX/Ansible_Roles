@@ -1,0 +1,12 @@
+# Managed by Ansible — do not edit manually.
+[Definition]
+{% for key, value in item.definition.items() %}
+{% if value is sequence and value is not string %}
+{{ "%-12s" | format(key) }} = {{ value[0] }}
+{% for line in value[1:] %}
+            {{ line }}
+{% endfor %}
+{% else %}
+{{ "%-12s" | format(key) }} = {{ value }}
+{% endif %}
+{% endfor %}

@@ -1,0 +1,41 @@
+---
+# ansible-playbook hardening.yml -i inventory
+# Выборочный запуск:  --tags ssh,fail2ban
+# Пропустить тег:     --skip-tags logrotate
+#
+# Переменные для переопределения в group_vars/all.yml:
+#   ssh_port: 22322
+#   backup_dir: /var/backups/hardening
+#   fail2ban_jails: [...]
+#   logrotate_config: [...]
+#   dnf_automatic.apply_updates: no
+
+- name: Server hardening
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - role: hardening_packages
+      tags: [packages]
+
+    - role: ssh_hardening
+      tags: [ssh]
+
+    - role: password_policy
+      tags: [password_policy]
+
+    - role: network_hardening
+      tags: [iptables, sysctl, network_hardening]
+
+    - role: fail2ban
+      tags: [fail2ban]
+
+    - role: logrotate
+      tags: [logrotate]
+
+    - role: auto_upgrades
+      tags: [auto_upgrades]
+
+    - role: auditd
+      tags: [auditd]

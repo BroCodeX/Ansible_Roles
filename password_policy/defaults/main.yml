@@ -1,0 +1,39 @@
+---
+backup_dir: /var/backups/hardening
+
+# Список системных файлов — используется и для бэкапа, и для выставления прав.
+# shadow_group приходит из vars/Debian.yml или vars/RedHat.yml.
+system_files:
+  - path: /etc/passwd
+    owner: root
+    group: root
+    mode: '0644'
+  - path: /etc/shadow
+    owner: root
+    group: "{{ shadow_group }}"
+    mode: '0640'
+  - path: /etc/login.defs
+    owner: root
+    group: root
+    mode: '0644'
+
+login_defs_path: /etc/login.defs
+pwquality_conf_path: /etc/security/pwquality.conf
+
+pwquality_params:
+  - { name: minlen,    value: 12 }
+  - { name: dcredit,   value: -1 }
+  - { name: ucredit,   value: -1 }
+  - { name: lcredit,   value: -1 }
+  - { name: ocredit,   value: -1 }
+  - { name: maxrepeat, value: 3  }
+
+# Каждый элемент — одна строка в login_defs_path.
+# Добавляй/убирай/меняй значения здесь, не трогая таск.
+password_policy:
+  - { regexp: '^UMASK',                 line: 'UMASK		027' }
+  - { regexp: '^PASS_MAX_DAYS',         line: 'PASS_MAX_DAYS	90' }
+  - { regexp: '^PASS_MIN_DAYS',         line: 'PASS_MIN_DAYS	7' }
+  - { regexp: '^PASS_MIN_LEN',          line: 'PASS_MIN_LEN	12' }
+  - { regexp: '^PASS_WARN_AGE',         line: 'PASS_WARN_AGE	30' }
+  - { regexp: '^SHA_CRYPT_MIN_ROUNDS',  line: 'SHA_CRYPT_MIN_ROUNDS 65536' }

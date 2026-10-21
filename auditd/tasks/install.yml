@@ -1,0 +1,16 @@
+---
+- name: Install auditd package
+  ansible.builtin.package:
+    name: "{{ auditd_package }}"
+    state: present
+
+- name: Enable and start auditd
+  ansible.builtin.service:
+    name: auditd
+    state: started
+    enabled: yes
+  register: auditd_service
+  # In check mode the package is only simulated, so the unit may not exist yet
+  failed_when:
+    - auditd_service is failed
+    - not (ansible_check_mode and 'Could not find the requested service' in auditd_service.msg | default(''))

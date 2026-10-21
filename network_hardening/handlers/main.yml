@@ -1,0 +1,14 @@
+---
+- name: reload iptables
+  ansible.builtin.command: "{{ 'netfilter-persistent reload' if ansible_facts['os_family'] == 'Debian' else 'systemctl restart iptables ip6tables' }}"
+  changed_when: true
+
+- name: restart docker after iptables reload
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  when: iptables_docker_enabled | default(false)
+
+- name: apply sysctl
+  ansible.builtin.command: sysctl --system
+  changed_when: true

@@ -1,0 +1,13 @@
+---
+# Execute in file order under the same listen topic.
+# If sshd -t fails the play aborts — sshd is never restarted with a broken config.
+- name: validate sshd config
+  ansible.builtin.command: sshd -t
+  changed_when: false
+  listen: "validate and restart sshd"
+
+- name: restart sshd
+  ansible.builtin.service:
+    name: "{{ ssh_service_name }}"
+    state: restarted
+  listen: "validate and restart sshd"
