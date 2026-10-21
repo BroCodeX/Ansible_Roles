@@ -47,6 +47,7 @@ variables:
   ANSIBLE_FORCE_COLOR: "true"
 
 .before_script_ansible:
+  - ansible-galaxy install -r requirements.yml
   - eval $(ssh-agent -s)
   - chmod 400 "$ANSIBLE_SSH_PRIVATE_KEY"
   - cat "$ANSIBLE_SSH_PRIVATE_KEY" | base64 -d | ssh-add -
