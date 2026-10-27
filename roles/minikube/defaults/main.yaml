@@ -1,0 +1,4 @@
+minikube_version: "latest"
+minikube_bin_path: "/usr/local/bin"
+kubectl_bin_path: "/usr/local/bin/kubectl"
+minikube_driver: "docker" # docker, none, podman, virtualbox, kvm

@@ -1,0 +1,6 @@
+---
+- name: Check if CPU supports virtualization
+  ansible.builtin.command: grep -E 'vmx|svm' /proc/cpuinfo
+  register: virtualization_check
+  ignore_errors: false
+  changed_when: false

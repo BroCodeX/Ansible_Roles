@@ -25,7 +25,15 @@
 {% endif %}
 {% if item.reverse_proxy is defined %}
 
+{% if item.header_up | default([]) | length > 0 %}
+	reverse_proxy {{ item.reverse_proxy }} {
+{% for h in item.header_up %}
+		header_up {{ h }}
+{% endfor %}
+	}
+{% else %}
 	reverse_proxy {{ item.reverse_proxy }}
+{% endif %}
 {% elif item.root is defined %}
 
 	root * {{ item.root }}

@@ -1,0 +1,9 @@
+---
+- name: Verify virtualization installed
+  ansible.builtin.import_tasks: virt.yaml
+
+- name: Install kubectl
+  ansible.builtin.import_tasks: kubectl.yml
+
+- name: Install minikube and dependencies
+  ansible.builtin.import_tasks: install.yml

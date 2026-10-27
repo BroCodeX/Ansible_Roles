@@ -1,0 +1,48 @@
+---
+- name: Check if kubectl is already installed
+  ansible.builtin.command: kubectl version --client --short
+  register: kubectl_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Show existing kubectl version
+  ansible.builtin.debug:
+    msg: "kubectl already installed: {{ kubectl_check.stdout }}"
+  when: kubectl_check.rc == 0
+
+- name: Create temporary file for kubectl download
+  ansible.builtin.tempfile:
+    state: file
+    suffix: kubectl
+  register: kubectl_tmp
+  when: kubectl_check.rc != 0
+
+- name: Download latest kubectl binary
+  ansible.builtin.shell: >
+    curl -sSL -o {{ kubectl_tmp.path }} https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl
+  when: kubectl_check.rc != 0
+
+- name: Make kubectl executable
+  ansible.builtin.file:
+    path: "{{ kubectl_tmp.path }}"
+    mode: '0755'
+  when: kubectl_check.rc != 0
+
+- name: Move kubectl binary to {{ kubectl_bin_path }}
+  ansible.builtin.command:
+    cmd: mv {{ kubectl_tmp.path }} {{ kubectl_bin_path }}
+  args:
+    creates: "{{ kubectl_bin_path }}"
+  become: true
+  when: kubectl_check.rc != 0
+
+- name: Verify kubectl installation
+  ansible.builtin.command: kubectl version --client --short
+  register: kubectl_version_check
+  changed_when: false
+  when: kubectl_check.rc != 0
+
+- name: Show installed kubectl version
+  ansible.builtin.debug:
+    msg: "kubectl just installed: {{ kubectl_version_check.stdout }}"
+  when: kubectl_check.rc != 0

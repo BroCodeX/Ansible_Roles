@@ -30,6 +30,7 @@ The config is validated (`caddy validate`) before the service is reloaded.
 | `aliases` | Extra addresses for the same site |
 | `root` | Static site root (`file_server`) |
 | `reverse_proxy` | Upstream, used instead of `root` |
+| `header_up` | List of `header_up` lines added to `reverse_proxy`, e.g. `X-Forwarded-Proto https` |
 | `encode` | `true` by default |
 | `log_format` | Overrides `caddy_log_format` |
 | `extra_config` | Raw Caddyfile lines added to the site block |
