@@ -2,6 +2,9 @@
 caddy_package: caddy
 # present | latest
 caddy_package_state: present
+# Caddy version to install, e.g. "2.8.4"; "latest" = newest available in the repo.
+# A pinned version overrides caddy_package_state and allows downgrades.
+caddy_version: latest
 caddy_service_enabled: true
 
 # Official Cloudsmith repo for Debian-like systems

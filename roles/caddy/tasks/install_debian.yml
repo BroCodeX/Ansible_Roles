@@ -41,6 +41,7 @@
 
 - name: Install Caddy
   ansible.builtin.apt:
-    name: "{{ caddy_package }}"
-    state: "{{ caddy_package_state }}"
+    name: "{{ caddy_package if caddy_version == 'latest' else caddy_package ~ '=' ~ caddy_version }}"
+    state: "{{ caddy_package_state if caddy_version == 'latest' else 'present' }}"
+    allow_downgrade: "{{ caddy_version != 'latest' }}"
     update_cache: "{{ caddy_apt_list is changed }}"

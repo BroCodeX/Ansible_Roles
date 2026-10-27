@@ -14,6 +14,7 @@ The config is validated (`caddy validate`) before the service is reloaded.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `caddy_version` | `latest` | Caddy version to install (e.g. `2.8.4`). A pinned version ignores `caddy_package_state` and permits downgrades |
 | `caddy_package_state` | `present` | `present` / `latest` |
 | `caddy_global_options` | `[]` | Lines for the global options block |
 | `caddy_sites` | `[]` | List of sites (see below) |
