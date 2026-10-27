@@ -1,0 +1,11 @@
+---
+# HashiCorp Vault server.
+# ansible-playbook playbooks/vault.yml -i inventory/hosts.yml --limit vault_hosts --ask-vault-pass
+
+- name: Vault
+  hosts: vault_hosts
+  become: true
+
+  roles:
+    - role: vault
+      tags: [vault]

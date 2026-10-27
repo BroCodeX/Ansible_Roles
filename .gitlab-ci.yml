@@ -4,18 +4,23 @@ spec:
       description: "Select playbook to run"
       type: string
       options:
-        - nginx
-        - prometheus
-        - filebeat
-      default: "nginx"
+        - hardening
+        - base
+        - web
+        - containers
+        - logging
+        - vault
+        - backup
+        - devops
+      default: "hardening"
     limit:
       description: "Limit to host or group names (comma separated)"
       type: string
-      default: "nginx_hosts"
+      default: "all"
     tags:
-      description: "Tags names (comma separated)"
+      description: "Tags names (comma separated), 'all' runs every tag"
       type: string
-      default: "nginx"
+      default: "all"
     extra_args:
       description: "Extra args ansible-playbook"
       type: string
@@ -77,7 +82,7 @@ variables:
   script:
     - if $[[ inputs.has_vault ]]; then ANSIBLE_ARGS="$ANSIBLE_ARGS --vault-password-file ${ANSIBLE_VAULT_PASSWORD_FILE}"; fi
     - echo ${ANSIBLE_ARGS}
-    - ansible-playbook ${ANSIBLE_ARGS} $[[ inputs.playbook ]].yml -C -D --become
+    - ansible-playbook ${ANSIBLE_ARGS} playbooks/$[[ inputs.playbook ]].yml -C -D --become
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: manual
@@ -103,7 +108,7 @@ variables:
   script:
     - if $[[ inputs.has_vault ]]; then ANSIBLE_ARGS="$ANSIBLE_ARGS --vault-password-file ${ANSIBLE_VAULT_PASSWORD_FILE}"; fi
     - echo ${ANSIBLE_ARGS}
-    - ansible-playbook ${ANSIBLE_ARGS} $[[ inputs.playbook ]].yml -D --become
+    - ansible-playbook ${ANSIBLE_ARGS} playbooks/$[[ inputs.playbook ]].yml -D --become
   needs:
     - "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - check"
   rules:

@@ -1,5 +1,5 @@
 ---
-# ansible-playbook hardening.yml -i inventory
+# ansible-playbook playbooks/hardening.yml -i inventory
 # Выборочный запуск:  --tags ssh,fail2ban
 # Пропустить тег:     --skip-tags logrotate
 #

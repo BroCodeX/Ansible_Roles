@@ -4,7 +4,7 @@
 
 ## 📋 Возможности
 
-- ✅ **Несколько playbooks**: nginx, prometheus, filebeat и другие
+- ✅ **Несколько playbooks**: hardening, base, web, containers, logging, vault, backup, devops
 - ✅ **Гибкая параметризация**: выбор целевых хостов, тегов и доп. аргументов
 - ✅ **Двухэтапная проверка**: сухой прогон (check) перед реальным развертыванием (deploy)
 - ✅ **Безопасность**: поддержка SSH ключей и Ansible Vault
@@ -23,9 +23,9 @@
 
 | Параметр | Тип | По умолчанию | Описание |
 |----------|-----|--------------|---------|
-| `playbook` | string | `nginx` | Выбор playbook: `nginx`, `prometheus`, `filebeat` |
-| `limit` | string | `nginx_hosts` | Ограничение на хосты/группы (разделены запятыми) |
-| `tags` | string | `nginx` | Теги задач (разделены запятыми) |
+| `playbook` | string | `hardening` | Playbook из `playbooks/`: `hardening`, `base`, `web`, `containers`, `logging`, `vault`, `backup`, `devops` |
+| `limit` | string | `all` | Ограничение на хосты/группы (разделены запятыми) |
+| `tags` | string | `all` | Теги задач (разделены запятыми) |
 | `extra_args` | string | `` | Дополнительные аргументы для `ansible-playbook` |
 | `has_vault` | boolean | `false` | Использовать `--vault-password-file` |
 
@@ -45,29 +45,29 @@
 
 ### Примеры
 
-#### Развернуть nginx на определенные хосты
+#### Hardening на группу хостов
 ```
-playbook: nginx
-limit: nginx_hosts
-tags: nginx
+playbook: hardening
+limit: all
+tags: ssh,auditd
 extra_args: -vv
 has_vault: false
 ```
 
-#### Развернуть prometheus с Vault
+#### Бэкап Vault с Vault-паролем
 ```
-playbook: prometheus
-limit: prometheus_group
-tags: monitoring
-extra_args: -vv
+playbook: backup
+limit: vault_hosts
+tags: vault_backup
+extra_args:
 has_vault: true
 ```
 
-#### Развернуть filebeat на несколько хостов
+#### Caddy на web-хосты
 ```
-playbook: filebeat
-limit: webservers,appservers
-tags: logging
+playbook: web
+limit: caddy_hosts
+tags: caddy
 extra_args: --diff
 has_vault: false
 ```
@@ -84,7 +84,7 @@ has_vault: false
 - **Результат**: Показывает, какие изменения будут внесены без фактического их применения
 
 ```yaml
-ansible-playbook ${ANSIBLE_ARGS} playbook.yml -C -D --become
+ansible-playbook ${ANSIBLE_ARGS} playbooks/<playbook>.yml -C -D --become
 ```
 
 ### 2️⃣ Deploy (Развертывание)
@@ -95,7 +95,7 @@ ansible-playbook ${ANSIBLE_ARGS} playbook.yml -C -D --become
 - **Результат**: Применяет изменения на целевых хостах
 
 ```yaml
-ansible-playbook ${ANSIBLE_ARGS} playbook.yml -D --become
+ansible-playbook ${ANSIBLE_ARGS} playbooks/<playbook>.yml -D --become
 ```
 
 ## 🔐 Переменные окружения
@@ -116,13 +116,13 @@ ANSIBLE_VAULT_PASSWORD_FILE  # Путь к файлу пароля Vault
 ├── .gitlab-ci.yml           # Конфигурация CI/CD
 ├── inventory/
 │   └── hosts.yml            # Инвентори с хостами/группами
-├── nginx.yml                # Playbook для nginx
-├── prometheus.yml           # Playbook для prometheus
-├── filebeat.yml             # Playbook для filebeat
+├── ansible.cfg              # roles_path, callbacks
+├── requirements.yml         # Galaxy-зависимости
+├── playbooks/               # Playbooks (см. README.md)
+│   ├── hardening.yml
+│   ├── base.yml  web.yml  containers.yml
+│   └── logging.yml  vault.yml  backup.yml  devops.yml
 └── roles/                   # Ansible roles
-    ├── nginx/
-    ├── prometheus/
-    └── filebeat/
 ```
 
 ## 🎯 Правила и триггеры

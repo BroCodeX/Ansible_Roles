@@ -1,0 +1,17 @@
+---
+# Baseline for every server: packages, timezone, sysctl, users, firewall.
+# ansible-playbook playbooks/base.yml -i inventory/hosts.yml --limit base_hosts --tags users
+
+- name: Base server setup
+  hosts: base_hosts
+  become: true
+
+  roles:
+    - role: common
+      tags: [common]
+
+    - role: users
+      tags: [users]
+
+    - role: firewalld
+      tags: [firewalld]

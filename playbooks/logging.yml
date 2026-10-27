@@ -1,0 +1,19 @@
+---
+# Log pipeline: Elastic Stack and Vector shippers.
+# ansible-playbook playbooks/logging.yml -i inventory/hosts.yml --limit elastic_hosts --tags elastic_stack
+
+- name: Elastic Stack
+  hosts: elastic_hosts
+  become: true
+
+  roles:
+    - role: elastic_stack
+      tags: [elastic_stack]
+
+- name: Vector log shippers
+  hosts: vector_hosts
+  become: true
+
+  roles:
+    - role: vector
+      tags: [vector]

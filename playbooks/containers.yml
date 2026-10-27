@@ -1,0 +1,27 @@
+---
+# Docker engine and compose-based services.
+# ansible-playbook playbooks/containers.yml -i inventory/hosts.yml --limit docker_hosts --tags docker_compose
+
+- name: Docker engine
+  hosts: docker_hosts
+  become: true
+
+  roles:
+    - role: geerlingguy.docker
+      tags: [docker]
+
+- name: Compose projects
+  hosts: docker_hosts
+  become: true
+
+  roles:
+    - role: docker-compose
+      tags: [docker_compose]
+
+- name: LDAP (compose)
+  hosts: ldap_hosts
+  become: true
+
+  roles:
+    - role: ldap
+      tags: [ldap]

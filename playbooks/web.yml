@@ -1,0 +1,11 @@
+---
+# Reverse proxy / web entrypoint.
+# ansible-playbook playbooks/web.yml -i inventory/hosts.yml --limit caddy_hosts
+
+- name: Web servers
+  hosts: caddy_hosts
+  become: true
+
+  roles:
+    - role: caddy
+      tags: [caddy]

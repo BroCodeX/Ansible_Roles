@@ -1,0 +1,19 @@
+---
+# Cron-based backups to S3. Requires S3 and alertmanager vars (use ansible-vault for secrets).
+# ansible-playbook playbooks/backup.yml -i inventory/hosts.yml --limit vault_hosts --tags vault_backup --ask-vault-pass
+
+- name: Vault raft snapshots
+  hosts: vault_hosts
+  become: true
+
+  roles:
+    - role: vault_backup
+      tags: [vault_backup]
+
+- name: MongoDB backups
+  hosts: mongodb_hosts
+  become: true
+
+  roles:
+    - role: mongodb_backup
+      tags: [mongodb_backup]

@@ -1,0 +1,19 @@
+---
+# DevOps instance tooling and Kubernetes manifest rendering.
+# ansible-playbook playbooks/devops.yml -i inventory/hosts.yml --limit ops_hosts --tags helm,kubectl
+
+- name: DevOps tooling
+  hosts: ops_hosts
+  become: true
+
+  roles:
+    - role: ops
+      tags: [ops]
+
+- name: Render Kubernetes manifests
+  hosts: ops_hosts
+  become: true
+
+  roles:
+    - role: k8s-manifest
+      tags: [k8s_manifest]
