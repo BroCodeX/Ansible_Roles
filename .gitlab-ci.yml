@@ -49,6 +49,8 @@ stages:
 
 variables:
   INVENTORY: "inventory/hosts.yml"
+  PLAYBOOKS_DIR: "playbooks"
+  ANSIBLE_IMAGE: "$CI_REGISTRY/project/infra/docker-images/ansible:latest"
   ANSIBLE_FORCE_COLOR: "true"
 
 .before_script_ansible:
@@ -65,7 +67,7 @@ variables:
 # Check diff playbook
 # =====
 "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - check":
-  image: $CI_REGISTRY/project/infra/docker-images/ansible:latest
+  image: $ANSIBLE_IMAGE
   extends:
     - .common_tags
   stage: check
@@ -82,7 +84,7 @@ variables:
   script:
     - if $[[ inputs.has_vault ]]; then ANSIBLE_ARGS="$ANSIBLE_ARGS --vault-password-file ${ANSIBLE_VAULT_PASSWORD_FILE}"; fi
     - echo ${ANSIBLE_ARGS}
-    - ansible-playbook ${ANSIBLE_ARGS} playbooks/$[[ inputs.playbook ]].yml -C -D --become
+    - ansible-playbook ${ANSIBLE_ARGS} ${PLAYBOOKS_DIR}/$[[ inputs.playbook ]].yml -C -D --become
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
       when: manual
@@ -97,7 +99,7 @@ variables:
 # Deploy playbook
 # =====
 "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - deploy":
-  image: $CI_REGISTRY/project/infra/docker-images/ansible:latest
+  image: $ANSIBLE_IMAGE
   extends:
     - .common_tags
   stage: deploy
@@ -108,7 +110,7 @@ variables:
   script:
     - if $[[ inputs.has_vault ]]; then ANSIBLE_ARGS="$ANSIBLE_ARGS --vault-password-file ${ANSIBLE_VAULT_PASSWORD_FILE}"; fi
     - echo ${ANSIBLE_ARGS}
-    - ansible-playbook ${ANSIBLE_ARGS} playbooks/$[[ inputs.playbook ]].yml -D --become
+    - ansible-playbook ${ANSIBLE_ARGS} ${PLAYBOOKS_DIR}/$[[ inputs.playbook ]].yml -D --become
   needs:
     - "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - check"
   rules:
