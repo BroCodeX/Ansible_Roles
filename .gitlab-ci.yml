@@ -43,9 +43,9 @@ stages:
   - check
   - deploy
 
-.common_tags:  
+default:
   tags:
-    - dev2
+    - docker_infra
 
 variables:
   INVENTORY: "inventory/hosts.yml"
@@ -68,8 +68,6 @@ variables:
 # =====
 "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - check":
   image: $ANSIBLE_IMAGE
-  extends:
-    - .common_tags
   stage: check
   needs: []
   before_script:
@@ -100,8 +98,6 @@ variables:
 # =====
 "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - deploy":
   image: $ANSIBLE_IMAGE
-  extends:
-    - .common_tags
   stage: deploy
   before_script:
     - !reference [.before_script_ansible]
