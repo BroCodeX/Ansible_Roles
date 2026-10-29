@@ -34,10 +34,11 @@ spec:
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
-    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: never
 
 stages:
   - check
@@ -84,13 +85,11 @@ variables:
     - echo ${ANSIBLE_ARGS}
     - ansible-playbook ${ANSIBLE_ARGS} ${PLAYBOOKS_DIR}/$[[ inputs.playbook ]].yml -C -D --become
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
-      changes:
-        - roles/firewalld/files/custom_ipset_binom_blacklist
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH
       when: on_success
-    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: manual
 
 # =====
@@ -110,9 +109,7 @@ variables:
   needs:
     - "$[[ inputs.playbook ]] - $[[ inputs.limit ]] - $[[ inputs.tags ]] - check"
   rules:
-    - if: $CI_COMMIT_BRANCH == "master"
-      changes:
-        - roles/firewalld/files/custom_ipset_binom_blacklist
-      when: on_success
-    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: manual
