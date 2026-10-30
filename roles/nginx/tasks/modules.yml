@@ -1,0 +1,33 @@
+---
+- name: Ensure modules directory exists on remote hosts
+  ansible.builtin.file:
+    path: "{{ nginx_module_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Download nginx modules to controller
+  ansible.builtin.get_url:
+    url: "{{ item.download_url }}"
+    dest: "{{ nginx_modules_tmp_dir }}/{{ item.filename }}"
+    mode: "0644"
+    headers: "{{ nginx_modules_download_headers }}"
+    timeout: "{{ nginx_modules_download_timeout }}"
+  loop: "{{ nginx_modules }}"
+  when: nginx_modules | length > 0
+  delegate_to: localhost
+  become: false
+
+- name: Copy nginx modules to remote hosts
+  ansible.builtin.copy:
+    src: "{{ nginx_modules_tmp_dir }}/{{ item.filename }}"
+    dest: "{{ nginx_module_path }}/{{ item.filename }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ nginx_modules }}"
+  when:
+    - nginx_modules | length > 0
+    - not ansible_check_mode
+  notify: Reload nginx

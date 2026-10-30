@@ -1,0 +1,66 @@
+---
+# install options
+nginx_version: 1.26 # stable
+nginx_apt_key_url: "https://nginx.org/keys/nginx_signing.key"
+nginx_apt_repository: "deb http://nginx.org/packages/{{ ansible_distribution | lower }}/ {{ ansible_distribution_release }} nginx"
+nginx_custom_binary_url: ""
+
+# config
+## vhosts
+nginx_domains: []
+nginx_template_domains: true
+nginx_vhosts_dst_dir: /etc/nginx/conf.d
+
+## security
+nginx_dh_pem_path: "/etc/pki/tls/dh.pem"
+nginx_dh_pem_size: 4096
+nginx_dh_pem_generate: true
+nginx_dh_pem_copy: true
+nginx_dh_pem_file: "{{ nginx_templates_path }}/dhparam.pem"
+nginx_templates_path: "{{ role_path }}/templates"
+## nginx.conf
+nginx_conf_template: "{{ nginx_templates_path }}/default_nginx.conf.j2"
+## status page
+nginx_status_page_template: "{{ nginx_templates_path }}/nginx_status.conf.j2"
+nginx_status_page_dst_path: "{{ nginx_vhosts_dst_dir }}/nginx_status.conf"
+nginx_snippets_path: "/etc/nginx/snippets.d"
+nginx_snippets_templates: "{{ nginx_templates_path }}/snippets"
+nginx_include_path: "/etc/nginx/includes"
+nginx_include_templates: "{{ nginx_templates_path }}/includes"
+nginx_basic_auth: {}
+nginx_basic_auth_path: /etc/nginx
+nginx_snippets:
+  - ssl.inc
+  - acme.inc
+## modules
+nginx_modules: []
+# Example:
+# nginx_modules:
+#   - name: "vts"
+#     filename: "ngx_http_geoip2_module.so"
+#     download_url: "https://gitlab.example.com/api/v4/projects/12345/packages/generic/nginx-module-geoip2/3.4-nginx1.26.3/ngx_http_geoip2_module.so"
+nginx_vts_port: 8881
+nginx_vts_memory_allocated: "16m"
+nginx_modules_download_url_base: "{{ lookup('env', 'CI_API_V4_URL') }}/projects/{{ lookup('env', 'CI_PROJECT_ID') }}/packages/generic"
+nginx_modules_download_headers:
+  JOB-TOKEN: "{{ lookup('env', 'CI_JOB_TOKEN') }}"
+nginx_modules_tmp_dir: "/tmp"
+nginx_modules_download_timeout: 60
+nginx_module_path: "/usr/lib/nginx/modules"
+
+# acme.sh
+nginx_acme_sh_install: false
+nginx_acme_sh_dependencies: ["cron", "git", "wget"]
+nginx_acme_sh_git_url: "https://github.com/acmesh-official/acme.sh"
+nginx_acme_sh_git_version: "master"
+nginx_acme_sh_git_clone_dest: "/usr/local/src/acme.sh"
+nginx_acme_sh_become_user: "root"
+nginx_acme_sh_git_update: false
+nginx_acme_sh_account_email: ""
+nginx_acme_sh_renew_time_in_days: 60
+nginx_acme_sh_issue_server: letsencrypt
+nginx_acme_sh_issue_mode: webroot # webroot / dns
+nginx_acme_sh_issue_dns_mode_provider_suffix: cf # https://github.com/acmesh-official/acme.sh/tree/master/dnsapi
+nginx_acme_sh_issue_webroot_path: /var/www
+nginx_acme_sh_issue_environment_vars: {}
+nginx_acme_sh_issue_dnssleep: ''

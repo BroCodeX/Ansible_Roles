@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+
+# acme.sh ssl challenge
+location ^~ /.well-known/ {
+    allow all;
+    auth_basic          off;
+    default_type "text/plain";
+    root {{ nginx_acme_sh_issue_webroot_path }};
+}

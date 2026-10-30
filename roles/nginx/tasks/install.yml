@@ -1,0 +1,160 @@
+- name: Install dependencies
+  ansible.builtin.apt:
+    name:
+      - procps
+      - gpg
+      - openssl
+    state: present
+
+- name: Add an apt key for nginx
+  ansible.builtin.apt_key:
+    url: "{{ nginx_apt_key_url }}"
+    state: present
+  when:
+    - (ansible_distribution != 'Ubuntu' or (ansible_distribution == 'Ubuntu' and ansible_distribution_major_version | int < 26 ))
+
+- name: Add nginx repo
+  ansible.builtin.apt_repository:
+    repo: "{{ nginx_apt_repository }}"
+    state: present
+  when:
+    - (ansible_distribution != 'Ubuntu' or (ansible_distribution == 'Ubuntu' and ansible_distribution_major_version | int < 26 ))
+
+- name: Add nginx repo
+  ansible.builtin.deb822_repository:
+    name: "nginx.org"
+    types: deb
+    uris: "http://nginx.org/packages/{{ ansible_distribution | lower }}/"
+    suites: "{{ ansible_distribution_release }}"
+    components:
+      - nginx
+    signed_by: "https://nginx.org/keys/nginx_signing.key"
+  when:
+    - ansible_distribution == 'Ubuntu' and ansible_distribution_major_version | int >= 26
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Pin nginx package
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/99nginx-custom-binary
+    content: |
+      Package: nginx
+      Pin: version {{ nginx_version }}
+      Pin-Priority: 1001
+    mode: "0644"
+  when: nginx_custom_binary_url | length > 0
+
+- name: Remove nginx pin
+  ansible.builtin.file:
+    path: /etc/apt/preferences.d/99nginx-custom-binary
+    state: absent
+  when: nginx_custom_binary_url | length == 0
+
+- name: Install nginx without restart
+  when: not ansible_check_mode
+  block:
+    - name: Prevent debian from running post-install scripts
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          exit 101
+        dest: /usr/sbin/policy-rc.d
+        mode: "0755"
+
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: "nginx={{ nginx_version }}*"
+        state: present
+      register: nginx_apt_install
+  always:
+    - name: Remove debian package policy
+      ansible.builtin.file:
+        dest: /usr/sbin/policy-rc.d
+        state: absent
+
+- name: Stock nginx binary mode
+  when: nginx_custom_binary_url | length == 0
+  block:
+    - name: Check if stock nginx binary backup exists
+      ansible.builtin.stat:
+        path: /usr/sbin/nginx.{{ nginx_version }}
+      register: nginx_stock_backup
+
+    - name: Restore stock nginx binary if custom was removed
+      ansible.builtin.copy:
+        src: /usr/sbin/nginx.{{ nginx_version }}
+        dest: /usr/sbin/nginx
+        remote_src: true
+        mode: "0755"
+      register: nginx_stock_backup_restored
+      when:
+        - not ansible_check_mode
+        - nginx_stock_backup.stat.exists
+
+    - name: Test nginx config
+      ansible.builtin.command:
+        cmd: nginx -t
+      changed_when: false
+
+    - name: Restart nginx
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: restarted
+      when:
+        - not ansible_check_mode
+        - nginx_apt_install.changed | default(false) or nginx_stock_backup_restored.changed
+
+- name: Custom nginx binary mode
+  when:
+    - not ansible_check_mode
+    - nginx_custom_binary_url | length > 0
+  block:
+    - name: Download custom nginx binary
+      ansible.builtin.get_url:
+        url: "{{ nginx_custom_binary_url }}"
+        dest: /tmp/nginx-custom
+        mode: "0755"
+
+    - name: Check if custom nginx binary is installed
+      ansible.builtin.command:
+        cmd: cmp -s /tmp/nginx-custom /usr/sbin/nginx
+      register: nginx_binary_cmp
+      changed_when: false
+      failed_when: nginx_binary_cmp.rc not in [0, 1]
+
+    - name: Install custom nginx binary
+      when: nginx_binary_cmp.rc == 1
+      block:
+        - name: Backup original nginx binary
+          ansible.builtin.copy:
+            src: /usr/sbin/nginx
+            dest: /usr/sbin/nginx.{{ nginx_version }}
+            remote_src: true
+            mode: preserve
+            force: false
+
+        - name: Replace nginx binary
+          ansible.builtin.copy:
+            src: /tmp/nginx-custom
+            dest: /usr/sbin/nginx
+            remote_src: true
+            mode: "0755"
+            owner: root
+            group: root
+
+        - name: Test nginx config with custom nginx binary
+          ansible.builtin.command:
+            cmd: nginx -t
+          changed_when: false
+
+        - name: Restart nginx
+          ansible.builtin.systemd_service:
+            name: nginx
+            state: restarted
+
+    - name: Remove custom binary from /tmp
+      ansible.builtin.file:
+        path: /tmp/nginx-custom
+        state: absent

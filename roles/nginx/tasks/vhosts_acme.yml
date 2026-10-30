@@ -1,0 +1,61 @@
+- name: Check fullchain.cer exists
+  ansible.builtin.stat:
+    path: "/root/.acme.sh/{{ item }}_ecc/fullchain.cer"
+  register: nginx_ssl_cer
+
+- name: Ensure acme.sh webroot exists
+  ansible.builtin.file:
+    path: "{{ nginx_acme_sh_issue_webroot_path }}"
+    state: directory
+    mode: "0755"
+  when: nginx_acme_sh_issue_mode == "webroot"
+
+- name: Template nginx default vhost without ssl
+  ansible.builtin.template:
+    src: "{{ nginx_templates_path }}/default_no_ssl.j2"
+    dest: "{{ nginx_vhosts_dst_dir }}/{{ item }}.conf"
+    mode: "0644"
+  when:
+    - not nginx_ssl_cer.stat.exists
+    - nginx_acme_sh_issue_mode == "webroot"
+
+- name: Reload nginx
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: reloaded
+  when:
+    - not nginx_ssl_cer.stat.exists
+    - not ansible_check_mode
+
+- name: Generate le-certificates for domain
+  ansible.builtin.shell: >
+    /root/.acme.sh/acme.sh --issue -d "{{ item }}"
+    --server {{ nginx_acme_sh_issue_server }}
+    {% if nginx_acme_sh_account_email %} --accountemail {{ nginx_acme_sh_account_email }}
+    {% endif %}
+    {% if nginx_acme_sh_issue_mode == "webroot" %} --webroot {{ nginx_acme_sh_issue_webroot_path }}
+    {% elif nginx_acme_sh_issue_mode == "dns" %} --dns dns_{{ nginx_acme_sh_issue_dns_mode_provider_suffix }}
+    {% if nginx_acme_sh_issue_dnssleep %} --dnssleep {{ nginx_acme_sh_issue_dnssleep }}
+    {% endif %}{% endif %}
+  changed_when: true
+  failed_when: false
+  environment: "{{ nginx_acme_sh_issue_environment_vars }}"
+  async: 600
+  poll: 30
+  when:
+    - nginx_is_acme_sh_installed.stat.exists
+    - not nginx_ssl_cer.stat.exists
+
+- name: Check again if fullchain.cer exists
+  ansible.builtin.stat:
+    path: "/root/.acme.sh/{{ item }}_ecc/fullchain.cer"
+  register: nginx_ssl_cer
+
+- name: Template ssl nginx vhost
+  ansible.builtin.template:
+    src: "{{ nginx_templates_path }}/{{ item }}_ssl.j2"
+    dest: "{{ nginx_vhosts_dst_dir }}/{{ item }}.conf"
+    mode: "0644"
+  notify: Reload nginx
+  when:
+    - nginx_ssl_cer.stat.exists

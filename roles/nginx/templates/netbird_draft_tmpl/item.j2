@@ -1,0 +1,83 @@
+# {{ ansible_managed }}
+# https://docs.netbird.io/selfhosted/external-reverse-proxy#nginx-combined
+
+upstream netbird_dashboard {
+    server {{ netbird_bind_addr }}:{{ netbird_dashboard_host_port }};
+    keepalive 10;
+}
+upstream netbird_server {
+    server {{ netbird_bind_addr }}:{{ netbird_management_host_port }};
+}
+
+server {
+    listen 80;
+    server_name {{ item }};
+
+    include {{ nginx_snippets_path }}/acme.inc;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name {{ item }};
+
+    ssl_certificate /root/.acme.sh/{{ item }}_ecc/fullchain.cer;
+    ssl_certificate_key /root/.acme.sh/{{ item }}_ecc/{{ item }}.key;
+
+    access_log /var/log/nginx/{{ item }}-access.log json_combined;
+    error_log /var/log/nginx/{{ item }}-error.log warn;
+
+    include {{ nginx_snippets_path }}/ssl.inc;
+    include {{ nginx_snippets_path }}/acme.inc;
+
+    # Required for long-lived gRPC connections
+    client_header_timeout 1d;
+    client_body_timeout 1d;
+
+    # Common proxy headers
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Scheme $scheme;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
+    grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+    # WebSocket connections (relay, signal, management)
+    location ~ ^/(relay|ws-proxy/) {
+        proxy_pass http://netbird_server;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 1d;
+    }
+
+    # Native gRPC (signal + management)
+    location ~ ^/(signalexchange\.SignalExchange|management\.ManagementService)/ {
+        grpc_pass grpc://netbird_server;
+        grpc_read_timeout 1d;
+        grpc_send_timeout 1d;
+        grpc_socket_keepalive on;
+    }
+
+    # HTTP routes (API + OAuth2)
+    location ~ ^/(api|oauth2)/ {
+        proxy_pass http://netbird_server;
+        proxy_set_header Host $host;
+    }
+
+    # Redirect URi
+    location {{ netbird_auth_redirect_uri }} {
+        proxy_pass http://netbird_dashboard/;
+        proxy_set_header Host $host;
+    }
+
+    # Dashboard (catch-all)
+    location / {
+        proxy_pass http://netbird_dashboard;
+    }
+}

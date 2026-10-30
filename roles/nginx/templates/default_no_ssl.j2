@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+
+server {
+    listen 80;
+    server_name {{ item }};
+
+    access_log /var/log/nginx/{{ item }}-access.log;
+    error_log /var/log/nginx/{{ item }}-error.log warn;
+
+    include {{ nginx_snippets_path }}/acme.inc;
+}

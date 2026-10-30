@@ -1,0 +1,11 @@
+server {
+    listen 127.0.0.1:81;
+    server_name itsumma.mon;
+    access_log off;
+    root /var/www/itsumma.mon;
+    allow 127.0.0.1;
+    deny all;
+    location /nginx-status {
+        stub_status on;
+    }
+}

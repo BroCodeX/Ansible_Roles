@@ -1,0 +1,81 @@
+---
+- name: Install nginx
+  ansible.builtin.import_tasks: install.yml
+  tags:
+    - nginx
+    - nginx_install
+
+- name: Install nginx modules
+  ansible.builtin.import_tasks: modules.yml
+  tags:
+    - nginx
+    - nginx_modules
+
+- name: Configure nginx
+  ansible.builtin.import_tasks: config.yml
+  tags:
+    - nginx
+    - nginx_config
+
+- name: Install acme.sh
+  ansible.builtin.import_tasks: acme.sh.yml
+  tags:
+    - nginx
+    - nginx_acme.sh
+  when: nginx_acme_sh_install
+
+- name: Template basic auth htpasswd files
+  ansible.builtin.template:
+    src: "{{ nginx_templates_path }}/basic_auth.j2"
+    dest: "{{ nginx_basic_auth_path }}/.htpasswd_{{ basic_auth.key }}"
+    mode: "0644"
+  vars:
+    users: "{{ basic_auth.value }}"
+  loop: "{{ nginx_basic_auth | dict2items }}"
+  loop_control:
+    loop_var: basic_auth
+  when:
+    - nginx_template_domains
+    - nginx_basic_auth is defined
+    - nginx_basic_auth | length > 0
+  notify: Reload nginx
+  tags:
+    - nginx
+    - nginx_vhosts
+
+- name: Template nginx vhosts
+  ansible.builtin.template:
+    src: "{{ nginx_templates_path }}/{{ item }}.conf.j2"
+    dest: "{{ nginx_vhosts_dst_dir }}/{{ item }}.conf"
+    mode: "0644"
+  loop: "{{ nginx_domains }}"
+  notify: Reload nginx
+  when:
+    - nginx_template_domains
+    - not nginx_acme_sh_install
+  tags:
+    - nginx
+    - nginx_vhosts
+
+- name: Check acme.sh is installed
+  ansible.builtin.stat:
+    path: "~/.acme.sh/acme.sh"
+  register: nginx_is_acme_sh_installed
+  become: true
+  become_user: "{{ nginx_acme_sh_become_user }}"
+  when:
+    - nginx_template_domains
+    - nginx_acme_sh_install
+  tags:
+    - nginx
+    - nginx_vhosts
+
+- name: Configure acme.sh nginx virtual servers
+  ansible.builtin.include_tasks: vhosts_acme.yml
+  loop: "{{ nginx_domains }}"
+  when:
+    - nginx_template_domains
+    - nginx_acme_sh_install
+  tags:
+    - nginx
+    - nginx_vhosts

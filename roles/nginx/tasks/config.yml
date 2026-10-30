@@ -1,0 +1,114 @@
+- name: Ensure directory for ssl exists
+  ansible.builtin.file:
+    path: "/etc/nginx/ssl"
+    state: directory
+    mode: "0755"
+
+- name: Generate private key
+  community.crypto.openssl_privatekey:
+    path: "/etc/nginx/ssl/default.pem"
+  when: not ansible_check_mode
+
+- name: Generate csr
+  community.crypto.openssl_csr:
+    path: "/etc/nginx/ssl/default.csr"
+    privatekey_path: "/etc/nginx/ssl/default.pem"
+    common_name: "default"
+  when: not ansible_check_mode
+
+- name: Get or generate cert
+  community.crypto.x509_certificate:
+    path: "/etc/nginx/ssl/default.crt"
+    privatekey_path: "/etc/nginx/ssl/default.pem"
+    csr_path: "/etc/nginx/ssl/default.csr"
+    provider: selfsigned
+  when: not ansible_check_mode
+
+- name: Ensure pki/tls directory exists
+  ansible.builtin.file:
+    path: "{{ nginx_dh_pem_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Check dh.pem exists
+  ansible.builtin.stat:
+    path: "{{ nginx_dh_pem_path }}"
+  register: nginx_dhparam
+
+- name: Generate dhparam
+  community.crypto.openssl_dhparam:
+    path: "{{ nginx_dh_pem_path }}"
+    size: "{{ nginx_dh_pem_size }}"
+  when:
+    - not ansible_check_mode
+    - nginx_dh_pem_generate
+    - not nginx_dhparam.stat.exists
+  timeout: 1800
+
+- name: Copy dhparam
+  ansible.builtin.copy:
+    src: "{{ nginx_dh_pem_file }}"
+    dest: "{{ nginx_dh_pem_path }}"
+    mode: "0644"
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - not nginx_dh_pem_generate
+    - nginx_dh_pem_copy
+    - not nginx_dhparam.stat.exists
+
+- name: Ensure nginx started and enabled
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  when: not ansible_check_mode
+
+- name: Template nginx.conf
+  ansible.builtin.template:
+    src: "{{ nginx_conf_template }}"
+    dest: "/etc/nginx/nginx.conf"
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Ensure additional directories exists
+  ansible.builtin.file:
+    path: "{{ additional_dir }}"
+    state: directory
+    mode: "0755"
+  with_items:
+    - "{{ nginx_snippets_path }}"
+    - "{{ nginx_include_path }}"
+    - "{{ nginx_basic_auth_path }}"
+    - "{{ nginx_vhosts_dst_dir }}"
+  loop_control:
+    loop_var: additional_dir
+
+- name: Template status page
+  ansible.builtin.template:
+    src: "{{ nginx_status_page_template }}"
+    dest: "{{ nginx_status_page_dst_path }}"
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Template snippets
+  ansible.builtin.template:
+    src: "{{ nginx_snippets_templates }}/{{ snippet }}.j2"
+    dest: "{{ nginx_snippets_path }}/{{ snippet }}"
+    mode: "0644"
+  with_items:
+    - "{{ nginx_snippets }}"
+  loop_control:
+    loop_var: snippet
+  notify: Reload nginx
+
+- name: Template includes
+  ansible.builtin.template:
+    src: "{{ include }}"
+    dest: "{{ nginx_include_path }}/{{ include | basename | regex_replace('\\.j2$', '') }}"
+    mode: "0644"
+  loop: "{{ query('fileglob', nginx_include_templates + '/*') }}"
+  loop_control:
+    label: "{{ include | basename }}"
+    loop_var: include
+  notify: Reload nginx
