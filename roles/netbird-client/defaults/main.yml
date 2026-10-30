@@ -1,0 +1,8 @@
+netbird_version: 0.41.3
+netbird_apt_key_url: https://pkgs.netbird.io/debian/public.key
+netbird_keyring: /usr/share/keyrings/netbird-archive-keyring.gpg
+netbird_apt_repository: "deb [ signed-by={{ netbird_keyring }} ] https://pkgs.netbird.io/debian stable main"
+
+netbird_client_register: true
+netbird_client_setup_key: ""
+netbird_domain: ""

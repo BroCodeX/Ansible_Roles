@@ -1,0 +1,59 @@
+- name: Install dependencies
+  apt:
+    state: present
+    name:
+    - curl
+    - gnupg
+    - ca-certificates
+
+- name: Check for apt-key binary
+  ansible.builtin.command: which apt-key
+  register: apt_key_check
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Add apt key for netbird
+  apt_key:
+    url: "{{ netbird_apt_key_url }}"
+    keyring: "{{ netbird_keyring }}"
+  when: apt_key_check.rc == 0
+
+- name: Add apt key for netbird (gpg)
+  ansible.builtin.shell:
+    cmd: "curl -fsSL {{ netbird_apt_key_url }} | gpg --dearmor -o {{ netbird_keyring }}"
+    creates: "{{ netbird_keyring }}"
+  when: apt_key_check.rc != 0
+
+- name: Ensure netbird apt repository exists
+  apt_repository:
+    repo: "{{ netbird_apt_repository }}"
+    state: present
+
+- name: Install netbird
+  ansible.builtin.apt:
+    name: "netbird={{ netbird_version }}*"
+    state: present
+    update_cache: true
+    cache_valid_time: 120
+  when:
+    - not ansible_check_mode
+
+- name: Check if service exists
+  ansible.builtin.systemd:
+    name: netbird
+  register: service_status
+  failed_when: false
+  changed_when: false
+
+- name: Install netbird service
+  shell: "netbird service install"
+  when: service_status.status.LoadState != 'loaded'
+
+- name: Start netbird
+  systemd:
+    name: netbird
+    enabled: yes
+    state: started
+  when:
+   - not ansible_check_mode

@@ -1,0 +1,19 @@
+- name: Install netbird
+  ansible.builtin.import_tasks: install.yml
+  tags:
+    - netbird_client
+    - netbird_client_install
+
+- name: Configure netbird
+  ansible.builtin.import_tasks: config.yml
+  when: netbird_client_setup_key | length > 0
+  tags:
+    - netbird_client
+    - netbird_client_config
+
+- name: Manage NetBird profiles
+  ansible.builtin.import_tasks: profiles.yml
+  when: netbird_client_setup_key | length > 0
+  tags:
+    - netbird_client
+    - netbird_client_profiles

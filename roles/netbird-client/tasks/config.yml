@@ -1,0 +1,30 @@
+---
+- name: Ensure netbird is not up
+  shell:
+    cmd: 'netbird status'
+  register: netbird_status
+  changed_when: false
+  ignore_errors: true
+  when: netbird_client_register is true
+
+- name: Setup netbird VPN
+  shell:
+    cmd: "netbird up --management-url https://{{ netbird_domain }} --admin-url https://{{ netbird_domain }} --setup-key {{ netbird_client_setup_key }}"
+  register: result
+  until: "result is not failed"
+  retries: 10
+  delay: 30
+  when:
+    - netbird_client_register is true and 'NeedsLogin' in netbird_status.stdout
+
+# issue https://github.com/netbirdio/netbird/issues/3576
+- name: Enable logrotate for netbird.out
+  become: true
+  template:
+    src: netbird.logrotate.j2
+    dest: /etc/logrotate.d/netbird
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - netbird_client_logrotate

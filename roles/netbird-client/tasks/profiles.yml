@@ -1,0 +1,86 @@
+- name: Get NetBird version from system
+  command: netbird version
+  register: netbird_version_cmd
+  changed_when: false
+  failed_when: false
+
+- name: Parse NetBird system version
+  set_fact:
+    netbird_system_version: "{{ netbird_version_cmd.stdout | trim }}"
+  when:
+    - netbird_version_cmd.rc == 0
+    - netbird_version_cmd.stdout | trim != ''
+
+- name: Determine effective NetBird version
+  set_fact:
+    netbird_effective_version: >-
+      {{ netbird_system_version | default(netbird_version) }}
+
+- name: Check if NetBird supports profiles
+  set_fact:
+    netbird_profiles_supported: "{{ netbird_effective_version is version('0.52.0', '>=') }}"
+  when: netbird_effective_version is defined
+
+- name: Show NetBird versions and profile support
+  debug:
+    msg:
+      - "System NetBird version: {{ netbird_system_version | default('unknown') }}"
+      - "Role netbird_version var: {{ netbird_version | default('not set') }}"
+      - "Effective version: {{ netbird_effective_version }}"
+      - "Profiles supported: {{ netbird_profiles_supported | default(false) }}"
+
+- name: Skip NetBird profile setup if unsupported
+  debug:
+    msg: "NetBird profiles not supported (<0.52.0)"
+  when: not netbird_profiles_supported | default(false)
+
+- name: Get NetBird profiles list
+  command: netbird profile list
+  register: netbird_profiles_raw
+  changed_when: false
+  failed_when: false
+  when: netbird_profiles_supported
+
+- name: Detect active NetBird profile
+  set_fact:
+    netbird_active_profile: "{{ (netbird_profiles_raw.stdout | regex_findall('✓\\s+(\\S+)'))[0] | default('') }}"
+  when:
+    - netbird_profiles_supported
+    - netbird_profiles_raw.stdout is defined
+
+- name: Check if NetBird profile exists
+  set_fact:
+    netbird_profile_exists: >-
+      {{ netbird_profiles_raw.stdout is search(netbird_profile ~ '$') }}
+  when: netbird_profiles_supported
+
+- name: Create NetBird profile if missing
+  command: "netbird profile add {{ netbird_profile }}"
+  when:
+    - netbird_profiles_supported
+    - not netbird_profile_exists
+  register: netbird_profile_create
+  changed_when: true
+
+- name: Select NetBird profile
+  command: "netbird profile select {{ netbird_profile }}"
+  when:
+    - netbird_profiles_supported
+    - netbird_active_profile != netbird_profile
+  register: netbird_profile_select
+  changed_when: "'Profile switched successfully' in netbird_profile_select.stdout"
+
+- name: NetBird up (via setup key)
+  command: >
+    netbird up --setup-key {{ netbird_client_setup_key }}
+    --management-url https://{{ netbird_domain }}
+  register: netbird_up_result
+  changed_when: "'already connected' not in (netbird_up_result.stdout | lower)"
+  when: not ansible_check_mode
+
+- name: Validate NetBird connection
+  assert:
+    that:
+      - "'connected' in (netbird_up_result.stdout | lower)"
+    fail_msg: "NetBird connection failed: {{ netbird_up_result.stdout }}"
+  when: not ansible_check_mode

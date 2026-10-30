@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+
+/var/log/netbird/netbird.out
+{
+    missingok
+    daily
+    copytruncate
+    rotate 7
+    notifempty
+    postrotate
+        /bin/systemctl restart netbird
+    endscript
+}
