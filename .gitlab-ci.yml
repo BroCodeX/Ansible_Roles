@@ -62,6 +62,7 @@ variables:
   ANSIBLE_IMAGE: "$CI_REGISTRY/bro-infra/docker-images/ansible:main-latest"
   ANSIBLE_FORCE_COLOR: "true"
   ANSIBLE_CONFIG: $CI_PROJECT_DIR/ansible.cfg
+  ANSIBLE_USER: ansible
 
 .before_script_ansible:
   - ansible-galaxy install -r requirements.yml
@@ -86,7 +87,7 @@ variables:
       --inventory $INVENTORY
       --limit $[[ inputs.limit ]]
       --tags $[[ inputs.tags ]]
-      --user ansible
+      --user $ANSIBLE_USER
       $[[ inputs.extra_args ]]
   script:
     - if $[[ inputs.has_vault ]]; then ANSIBLE_ARGS="$ANSIBLE_ARGS --vault-password-file ${ANSIBLE_VAULT_PASSWORD_FILE}"; fi
