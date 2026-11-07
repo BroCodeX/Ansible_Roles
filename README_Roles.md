@@ -10,6 +10,7 @@
 | `users` | [base.yml](playbooks/base.yml) | `users` | Пользователи, SSH-ключи и sudo через `/etc/sudoers.d` |
 | `firewalld` | [base.yml](playbooks/base.yml) | `firewalld`, `check_unmanaged` | Зоны, сервисы и правила firewalld |
 | `caddy` | [web.yml](playbooks/web.yml) | `caddy` | Установка Caddy, конфиг на домен в `/etc/caddy/conf.d`, валидация перед reload |
+| `docker` | — (добавить в [containers.yml](playbooks/containers.yml)) | `docker`, `docker_install`, `docker_config`, `docker_users` | Docker Engine + Compose plugin из репозитория Docker (Ubuntu/Debian/RHEL/Alma/Rocky/CentOS), `daemon.json`, `~/.docker/config.json` |
 | `docker-compose` | [containers.yml](playbooks/containers.yml) | `docker_compose` | Деплой compose-проектов из шаблонов, очистка неуправляемых проектов |
 | `ldap` | [containers.yml](playbooks/containers.yml) | `ldap`, `ldif` | OpenLDAP в compose, импорт LDIF |
 | `elastic_stack` | [logging.yml](playbooks/logging.yml) | `elastic_stack`, `install_elastic`, `secure_elastic`, `config_elastic` | Elasticsearch, Kibana, APM, exporter |
@@ -37,6 +38,7 @@
 | `users` | `users_users` |
 | `firewalld` | `firewalld_config_defaultzone`, `firewalld_additional_zones`, `firewalld_configuration` |
 | `caddy` | `caddy_package_state`, `caddy_global_options`, `caddy_log_dir` |
+| `docker` | `docker_version`, `docker_compose_plugin_version`, `docker_daemon_config`, `docker_daemon_config_extra`, `docker_group_users`, `docker_user_configs` |
 | `docker-compose` | `docker_compose_project_name`, `docker_compose_project_path`, `docker_compose_files`, `docker_compose_state` |
 | `ldap` | `ldap_domain`, `ldap_base_dn`, `ldap_admin_password`, `ldap_tls_enabled` |
 | `elastic_stack` | `elasticsearch_version`, `elasticsearch_heap_size`, `elasticsearch_cluster_name` |

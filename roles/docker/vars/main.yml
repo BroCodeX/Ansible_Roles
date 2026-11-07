@@ -1,0 +1,17 @@
+---
+# Official Docker repo flavour per distribution. AlmaLinux/Rocky/Oracle/etc. use the CentOS repo.
+docker_repo_distro_map:
+  Ubuntu: ubuntu
+  Debian: debian
+  RedHat: rhel
+  Fedora: fedora
+docker_repo_distro: "{{ docker_repo_distro_map[ansible_facts['distribution']] | default('centos' if ansible_facts['os_family'] == 'RedHat' else '') }}"
+
+docker_packages: >-
+  {{
+    ['docker-ce' ~ docker_engine_pin, 'docker-ce-cli' ~ docker_engine_pin, 'containerd.io']
+    + (['docker-buildx-plugin'] if docker_install_buildx else [])
+    + (['docker-compose-plugin' ~ docker_compose_pin] if docker_install_compose else [])
+    + docker_extra_packages
+  }}
+docker_version_pinned: "{{ docker_version | length > 0 or docker_compose_plugin_version | length > 0 }}"

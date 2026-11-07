@@ -1,0 +1,40 @@
+---
+- name: Include OS-family variables
+  ansible.builtin.include_vars: "{{ ansible_facts['os_family'] }}.yml"
+  tags: [docker, docker_install, docker_config]
+
+- name: Check supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] in ['Debian', 'RedHat']
+      - docker_repo_distro | length > 0
+      - ansible_facts['os_family'] != 'Debian' or ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+      - ansible_facts['architecture'] in docker_apt_arch_map | default({}) or ansible_facts['os_family'] == 'RedHat'
+    fail_msg: "Unsupported platform: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }} ({{ ansible_facts['architecture'] }})"
+    quiet: true
+  tags: [docker, docker_install]
+
+- name: Install Docker
+  ansible.builtin.include_tasks: "install_{{ ansible_facts['os_family'] }}.yml"
+  tags: [docker, docker_install]
+
+- name: Configure Docker daemon
+  ansible.builtin.include_tasks: daemon.yml
+  when: docker_daemon_manage | bool
+  tags: [docker, docker_config]
+
+- name: Flush handlers before starting the service
+  ansible.builtin.meta: flush_handlers
+  tags: [docker, docker_install, docker_config]
+
+- name: Enable and start Docker
+  ansible.builtin.service:
+    name: docker
+    state: "{{ docker_service_state }}"
+    enabled: "{{ docker_service_enabled | bool }}"
+  tags: [docker, docker_install]
+
+- name: Configure Docker users
+  ansible.builtin.include_tasks: users.yml
+  when: docker_group_users | length > 0 or docker_user_configs | length > 0
+  tags: [docker, docker_users]

@@ -1,0 +1,15 @@
+---
+docker_dependencies: [ca-certificates, curl]
+docker_conflicting_packages:
+  - docker
+  - docker-client
+  - docker-client-latest
+  - docker-common
+  - docker-latest
+  - docker-latest-logrotate
+  - docker-logrotate
+  - docker-engine
+  - podman-docker
+
+docker_engine_pin: "{{ '-' ~ docker_version if docker_version | length > 0 else '' }}"
+docker_compose_pin: "{{ '-' ~ docker_compose_plugin_version if docker_compose_plugin_version | length > 0 else '' }}"

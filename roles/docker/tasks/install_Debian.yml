@@ -1,0 +1,33 @@
+---
+- name: Install repository dependencies
+  ansible.builtin.apt:
+    name: "{{ docker_dependencies }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Remove conflicting packages
+  ansible.builtin.apt:
+    name: "{{ docker_conflicting_packages }}"
+    state: absent
+  when: docker_remove_conflicting_packages | bool
+
+- name: Add Docker apt repository (deb822)
+  ansible.builtin.deb822_repository:
+    name: "{{ docker_apt_repo_name }}"
+    types: [deb]
+    uris: "https://download.docker.com/linux/{{ docker_repo_distro }}"
+    suites: ["{{ ansible_facts['distribution_release'] }}"]
+    components: [stable]
+    architectures: ["{{ docker_apt_arch_map[ansible_facts['architecture']] }}"]
+    signed_by: "{{ docker_apt_key_url }}"
+    state: present
+    enabled: true
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: "{{ 'latest' if (docker_package_state == 'latest' and not docker_version_pinned) else 'present' }}"
+    update_cache: true
+    allow_downgrade: "{{ docker_version_pinned | bool }}"
+  notify: Restart docker

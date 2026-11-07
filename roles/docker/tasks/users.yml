@@ -1,0 +1,39 @@
+---
+- name: Add users to the docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_group_users }}"
+
+- name: Get passwd entries for users with docker config
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ item.user }}"
+  loop: "{{ docker_user_configs }}"
+  loop_control:
+    label: "{{ item.user }}"
+  register: docker_user_passwd
+
+- name: Create ~/.docker
+  ansible.builtin.file:
+    path: "{{ item.ansible_facts.getent_passwd[item.item.user][4] }}/.docker"
+    state: directory
+    owner: "{{ item.item.user }}"
+    group: "{{ item.ansible_facts.getent_passwd[item.item.user][3] | int }}"
+    mode: "0700"
+  loop: "{{ docker_user_passwd.results }}"
+  loop_control:
+    label: "{{ item.item.user }}"
+
+- name: Deploy ~/.docker/config.json
+  ansible.builtin.template:
+    src: user_config.json.j2
+    dest: "{{ item.ansible_facts.getent_passwd[item.item.user][4] }}/.docker/config.json"
+    owner: "{{ item.item.user }}"
+    group: "{{ item.ansible_facts.getent_passwd[item.item.user][3] | int }}"
+    mode: "0600"
+  loop: "{{ docker_user_passwd.results }}"
+  loop_control:
+    label: "{{ item.item.user }}"
+  no_log: true

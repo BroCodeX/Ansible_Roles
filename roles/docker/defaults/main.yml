@@ -1,0 +1,50 @@
+---
+# --- Versions -------------------------------------------------------------
+# Empty -> latest stable from the Docker repo.
+# Set e.g. "27.3.1" to pin Engine (docker-ce + docker-ce-cli).
+docker_version: ""
+# Empty -> latest. Set e.g. "2.29.7" to pin the compose plugin.
+docker_compose_plugin_version: ""
+# "present" keeps installed version; "latest" upgrades on every run (ignored for pinned versions).
+docker_package_state: present
+
+# --- Packages -------------------------------------------------------------
+docker_install_compose: true
+docker_install_buildx: true
+# Remove distro packages that conflict with docker-ce (docker.io, podman-docker, ...).
+docker_remove_conflicting_packages: true
+docker_extra_packages: []
+
+# --- Service --------------------------------------------------------------
+docker_service_enabled: true
+docker_service_state: started
+
+# --- /etc/docker/daemon.json ---------------------------------------------
+docker_daemon_manage: true
+docker_daemon_config_path: /etc/docker/daemon.json
+docker_daemon_config:
+  live-restore: false
+  no-new-privileges: true
+  userland-proxy: false
+  icc: false
+  registry-mirrors:
+    - https://dockerhub.timeweb.cloud
+    - https://cr.yandex/mirror
+    - https://mirror.gcr.io
+# Merged (recursively) over docker_daemon_config: add/override keys without redefining the whole dict.
+docker_daemon_config_extra: {}
+
+# --- Users ----------------------------------------------------------------
+# Users added to the "docker" group (membership == root-equivalent access to the host).
+docker_group_users: []
+
+# ~/.docker/config.json per user. Rendered from templates/user_config.json.j2.
+# docker_user_configs:
+#   - user: deploy
+#     config:
+#       auths:
+#         registry.example.com:
+#           auth: "{{ vault_registry_auth_b64 }}"
+#       credsStore: ""
+#       currentContext: default
+docker_user_configs: []

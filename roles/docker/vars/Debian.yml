@@ -1,0 +1,23 @@
+---
+docker_apt_repo_name: docker
+docker_apt_key_url: "https://download.docker.com/linux/{{ docker_repo_distro }}/gpg"
+docker_apt_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: armhf
+  s390x: s390x
+  ppc64le: ppc64el
+
+docker_dependencies: [ca-certificates, curl, gnupg, python3-debian]
+docker_conflicting_packages:
+  - docker.io
+  - docker-compose
+  - docker-compose-v2
+  - docker-doc
+  - podman-docker
+  - containerd
+  - runc
+
+# Debian packages carry epoch 5; a bare "27.3.1" is expanded to "5:27.3.1-*".
+docker_engine_pin: "{{ '=5:' ~ docker_version ~ ('' if '-' in docker_version else '-*') if docker_version | length > 0 else '' }}"
+docker_compose_pin: "{{ '=' ~ docker_compose_plugin_version ~ ('' if '-' in docker_compose_plugin_version else '-*') if docker_compose_plugin_version | length > 0 else '' }}"
