@@ -32,7 +32,7 @@ spec:
     inventory_path:
       description: "Path to the inventory file from root"
       type: string
-      default: "inventory/hosts.yml"
+      default: "inventory/hosts.yaml"
     playbooks_path:
       description: "Path to the playbook's dir from root"
       type: string
@@ -61,6 +61,7 @@ variables:
   PLAYBOOKS_DIR: $[[ inputs.playbooks_path ]]
   ANSIBLE_IMAGE: "$CI_REGISTRY/bro-infra/docker-images/ansible:main-latest"
   ANSIBLE_FORCE_COLOR: "true"
+  ANSIBLE_CONFIG: $CI_PROJECT_DIR/ansible.cfg
 
 .before_script_ansible:
   - ansible-galaxy install -r requirements.yml

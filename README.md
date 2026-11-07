@@ -27,7 +27,7 @@
 ├── .gitlab-ci.yml
 ├── ansible.cfg          # roles_path = roles:.ansible/roles
 ├── requirements.yml
-├── inventory/hosts.yml  # не в репозитории: создайте свой
+├── inventory/hosts.yaml
 ├── playbooks/
 └── roles/
 ```
@@ -51,11 +51,11 @@
 
 ```bash
 # Dry-run с diff, затем реальный прогон
-ansible-playbook playbooks/web.yml -i inventory/hosts.yml -C -D
-ansible-playbook playbooks/web.yml -i inventory/hosts.yml -D
+ansible-playbook playbooks/web.yml -i inventory/hosts.yaml -C -D
+ansible-playbook playbooks/web.yml -i inventory/hosts.yaml -D
 
 # Выборочно по группе и тегу
-ansible-playbook playbooks/hardening.yml -i inventory/hosts.yml --limit web01 --tags ssh
+ansible-playbook playbooks/hardening.yml -i inventory/hosts.yaml --limit web01 --tags ssh
 ```
 
 Секреты (Vault-токены, пароли S3/alertmanager/LDAP) храните в `ansible-vault`; в CI включается флагом `has_vault`.

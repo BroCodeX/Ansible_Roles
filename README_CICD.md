@@ -17,7 +17,7 @@
 - SSH приватный ключ (переменная `ANSIBLE_SSH_PRIVATE_KEY`)
 - Known hosts (переменная `SSH_KNOWN_HOSTS`, base64-закодированные)
 - Опционально: Ansible Vault пароль (`ANSIBLE_VAULT_PASSWORD_FILE`)
-- Инвентори файл: `inventory/hosts.yml`
+- Инвентори файл: `inventory/hosts.yaml`
 
 ## 📝 Входные параметры
 
@@ -115,7 +115,7 @@ ANSIBLE_VAULT_PASSWORD_FILE  # Путь к файлу пароля Vault
 .
 ├── .gitlab-ci.yml           # Конфигурация CI/CD
 ├── inventory/
-│   └── hosts.yml            # Инвентори с хостами/группами
+│   └── hosts.yaml           # Инвентори с хостами/группами
 ├── ansible.cfg              # roles_path, callbacks
 ├── requirements.yml         # Galaxy-зависимости
 ├── playbooks/               # Playbooks (см. README.md)
@@ -173,6 +173,6 @@ extra_args: --skip-tags dangerous
 При возникновении проблем проверьте:
 1. Наличие и корректность SSH ключа
 2. Актуальность Known hosts
-3. Наличие инвентори файла `inventory/hosts.yml`
+3. Наличие инвентори файла `inventory/hosts.yaml`
 4. Правильность синтаксиса playbooks
 5. Наличие необходимых прав доступа на целевых хостах
