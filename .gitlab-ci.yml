@@ -29,6 +29,14 @@ spec:
       description: "Use --vault-password-file"
       type: boolean
       default: false
+    inventory_path:
+      description: "Path to the inventory file from root"
+      type: string
+      default: "inventory/hosts.yml"
+    playbooks_path:
+      description: "Path to the playbook's dir from root"
+      type: string
+      default: "playbooks"
 ---
 
 workflow:
@@ -49,15 +57,14 @@ default:
     - docker_infra
 
 variables:
-  INVENTORY: "inventory/hosts.yml"
-  PLAYBOOKS_DIR: "playbooks"
-  ANSIBLE_IMAGE: "$CI_REGISTRY/project/infra/docker-images/ansible:latest"
+  INVENTORY: $[[ inputs.inventory_path ]]
+  PLAYBOOKS_DIR: $[[ inputs.playbooks_path ]]
+  ANSIBLE_IMAGE: "$CI_REGISTRY/bro-infra/docker-images/ansible:main-latest"
   ANSIBLE_FORCE_COLOR: "true"
 
 .before_script_ansible:
   - ansible-galaxy install -r requirements.yml
   - eval $(ssh-agent -s)
-  - chmod 400 "$ANSIBLE_SSH_PRIVATE_KEY"
   - cat "$ANSIBLE_SSH_PRIVATE_KEY" | base64 -d | ssh-add -
   - mkdir -p ~/.ssh
   - chmod 700 ~/.ssh
