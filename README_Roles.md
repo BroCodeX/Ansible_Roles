@@ -38,7 +38,7 @@
 | `users` | `users_users` |
 | `firewalld` | `firewalld_config_defaultzone`, `firewalld_additional_zones`, `firewalld_configuration` |
 | `caddy` | `caddy_package_state`, `caddy_global_options`, `caddy_log_dir` |
-| `docker` | `docker_version`, `docker_compose_plugin_version`, `docker_daemon_config`, `docker_daemon_config_extra`, `docker_group_users`, `docker_user_configs` |
+| `docker` | `docker_install`, `docker_version`, `docker_compose_plugin_version`, `docker_daemon_config`, `docker_daemon_config_extra`, `docker_group_users`, `docker_user_configs` |
 | `docker-compose` | `docker_compose_project_name`, `docker_compose_project_path`, `docker_compose_files`, `docker_compose_state` |
 | `ldap` | `ldap_domain`, `ldap_base_dn`, `ldap_admin_password`, `ldap_tls_enabled` |
 | `elastic_stack` | `elasticsearch_version`, `elasticsearch_heap_size`, `elasticsearch_cluster_name` |

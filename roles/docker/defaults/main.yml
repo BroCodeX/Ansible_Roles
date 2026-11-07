@@ -1,4 +1,8 @@
 ---
+# false -> skip repo/package/service tasks; only configure an already installed Docker
+# (daemon.json, ~/.docker/config.json, docker group). Restart handler still applies.
+docker_install: true
+
 # --- Versions -------------------------------------------------------------
 # Empty -> latest stable from the Docker repo.
 # Set e.g. "27.3.1" to pin Engine (docker-ce + docker-ce-cli).
