@@ -1,0 +1,38 @@
+---
+- name: Install acl package
+  ansible.builtin.package:
+    name: acl
+    state: present
+  when: acl_install_package | bool
+  tags:
+    - acl
+
+- name: Set ACL
+  ansible.posix.acl:
+    path: "{{ item.path }}"
+    entity: "{{ item.entity }}"
+    etype: "{{ item.etype }}"
+    permissions: "{{ item.permissions | default(omit) }}"
+    recursive: "{{ item.recursive | default(false) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ acl_entries }}"
+  loop_control:
+    label: "{{ item.path }} {{ item.etype }}:{{ item.entity }}"
+  tags:
+    - acl
+
+- name: Set default ACL
+  ansible.posix.acl:
+    path: "{{ item.path }}"
+    entity: "{{ item.entity }}"
+    etype: "{{ item.etype }}"
+    permissions: "{{ item.permissions | default(omit) }}"
+    recursive: "{{ item.recursive | default(false) }}"
+    default: true
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ acl_entries }}"
+  loop_control:
+    label: "{{ item.path }} default:{{ item.etype }}:{{ item.entity }}"
+  when: item.default | default(false) | bool
+  tags:
+    - acl

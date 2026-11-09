@@ -1,0 +1,12 @@
+---
+# Install acl (setfacl/getfacl)
+acl_install_package: true
+
+# List of ACL-records
+acl_entries: []
+#  - path: /home/bitrix/feeds.ekonika.ru/feeds
+#    entity: bitrix
+#    etype: group
+#    permissions: rwX
+#    recursive: true
+#    default: true   # additionally set default ACL (setfacl -d)
